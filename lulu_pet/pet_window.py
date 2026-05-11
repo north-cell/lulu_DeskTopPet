@@ -53,6 +53,7 @@ class PetWindow(QWidget):
         self._last_sticker_path: Path | None = None
         self._next_sticker_index = 0
         self._resting = False
+        self._motion_paused = False
         self._sticker_timer = QTimer(self)
         self._sticker_timer.setSingleShot(True)
         self._sticker_timer.timeout.connect(self._clear_sticker)
@@ -98,6 +99,13 @@ class PetWindow(QWidget):
     def toggle_visible(self) -> None:
         self.hide() if self.isVisible() else self.show()
 
+    @property
+    def motion_paused(self) -> bool:
+        return self._motion_paused
+
+    def set_motion_paused(self, paused: bool) -> None:
+        self._motion_paused = paused
+
     def trigger_random_action(self) -> None:
         mode = self.motion_random_mode()
         self.motion.start(mode)
@@ -133,6 +141,12 @@ class PetWindow(QWidget):
         visible_action = QAction("隐藏" if self.isVisible() else "显示", menu)
         visible_action.triggered.connect(self.toggle_visible)
         menu.addAction(visible_action)
+
+        pause_action = QAction("暂停移动", menu)
+        pause_action.setCheckable(True)
+        pause_action.setChecked(self._motion_paused)
+        pause_action.triggered.connect(self.set_motion_paused)
+        menu.addAction(pause_action)
 
         top_action = QAction("保持置顶", menu)
         top_action.setCheckable(True)
@@ -230,6 +244,9 @@ class PetWindow(QWidget):
             self.update()
             return
         if self._resting:
+            self.update()
+            return
+        if self._motion_paused:
             self.update()
             return
         self._motion_frame = self.motion.tick()
