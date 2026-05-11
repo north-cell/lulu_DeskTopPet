@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <rect width="320" height="240" fill="none"/>
+  <ellipse cx="156" cy="150" rx="108" ry="54" fill="#9b7357"/>
+  <ellipse cx="98" cy="110" rx="22" ry="18" fill="#8b654e"/>
+  <ellipse cx="206" cy="110" rx="22" ry="18" fill="#8b654e"/>
+  <path d="M118 142 Q128 136 138 142" fill="none" stroke="#241913" stroke-width="5" stroke-linecap="round"/>
+  <path d="M184 142 Q194 136 204 142" fill="none" stroke="#241913" stroke-width="5" stroke-linecap="round"/>
+  <path d="M147 164 Q157 170 169 164" fill="none" stroke="#2f2119" stroke-width="5" stroke-linecap="round"/>
+  <text x="218" y="76" font-family="Segoe UI, Arial" font-size="30" fill="#6f503e">Zz</text>
+  <ellipse cx="158" cy="196" rx="82" ry="15" fill="#6f503e" opacity=".25"/>
+</svg>

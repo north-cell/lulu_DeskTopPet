@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+build/
+*.spec.bak
+.pytest_cache/
+.mypy_cache/
+.superpowers/

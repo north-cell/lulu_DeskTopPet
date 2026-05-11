@@ -1,0 +1,11 @@
+{
+  "window_size": [
+    220,
+    180
+  ],
+  "always_on_top": true,
+  "speech_interval_seconds": 45,
+  "edge_snap": true,
+  "autostart": false,
+  "motion_speed_percent": 100
+}
