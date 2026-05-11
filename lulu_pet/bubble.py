@@ -1,22 +1,32 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QPointF, QRect, Qt, QTimer
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import QLabel, QWidget
+
+from .native_window import remove_windows_frame_artifacts
 
 
 class BubbleWidget(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            Qt.Tool
+            | Qt.FramelessWindowHint
+            | Qt.WindowStaysOnTopHint
+            | Qt.NoDropShadowWindowHint
+            | Qt.BypassWindowManagerHint
+        )
+        self.setAutoFillBackground(False)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         self.label = QLabel(self)
         self.label.setWordWrap(True)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setFont(QFont("Microsoft YaHei UI", 10))
-        self.label.setStyleSheet("color: #3b2a21; padding: 10px 14px;")
+        self.label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self.label.setFont(QFont("Microsoft YaHei UI", 10, QFont.Medium))
+        self.label.setStyleSheet("color: #3a2a22; padding: 12px 16px 13px 16px; line-height: 150%;")
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
@@ -27,10 +37,11 @@ class BubbleWidget(QWidget):
             return
         self.label.setText(text)
         self.label.adjustSize()
-        width = min(max(self.label.width() + 8, 130), 260)
-        height = self.label.height() + 8
+        width = min(max(self.label.width() + 16, 160), 300)
+        height = self.label.height() + 24
         self.resize(width, height)
-        self.label.setGeometry(4, 4, width - 8, height - 8)
+        self._apply_shape_mask()
+        self.label.setGeometry(8, 5, width - 16, height - 18)
 
         anchor_pos = anchor.mapToGlobal(anchor.rect().topLeft())
         x = anchor_pos.x() + max(0, (anchor.width() - width) // 2)
@@ -39,13 +50,51 @@ class BubbleWidget(QWidget):
             y = anchor_pos.y() + 8
         self.move(x, y)
         self.show()
+        self._remove_native_frame_artifacts()
         self._timer.start(duration_ms)
+
+    def showEvent(self, event):  # noqa: N802 - Qt override
+        super().showEvent(event)
+        self._remove_native_frame_artifacts()
 
     def paintEvent(self, event):  # noqa: N802 - Qt override
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        path = QPainterPath()
-        path.addRoundedRect(self.rect().adjusted(1, 1, -1, -1), 12, 12)
-        painter.fillPath(path, QColor(255, 250, 241, 238))
-        painter.setPen(QPen(QColor(142, 111, 88, 180), 1))
+        painter.setCompositionMode(QPainter.CompositionMode_Source)
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 0))
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+
+        body = self._body_rect()
+        path = self._bubble_path(body)
+
+        gradient = QLinearGradient(QPointF(body.left(), body.top()), QPointF(body.left(), body.bottom()))
+        gradient.setColorAt(0, QColor(255, 253, 247, 248))
+        gradient.setColorAt(1, QColor(255, 239, 219, 244))
+        painter.fillPath(path, gradient)
+
+        painter.setPen(QPen(QColor(151, 104, 78, 165), 1))
         painter.drawPath(path)
+
+        highlight = QPainterPath()
+        highlight.addRoundedRect(body.adjusted(4, 4, -4, -body.height() // 2), 13, 13)
+        painter.setPen(Qt.NoPen)
+        painter.fillPath(highlight, QColor(255, 255, 255, 44))
+
+    def _remove_native_frame_artifacts(self) -> None:
+        remove_windows_frame_artifacts(int(self.winId()))
+
+    def _apply_shape_mask(self) -> None:
+        path = self._bubble_path(self._body_rect())
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def _body_rect(self) -> QRect:
+        return self.rect().adjusted(1, 1, -1, -9)
+
+    def _bubble_path(self, body: QRect) -> QPainterPath:
+        path = QPainterPath()
+        path.addRoundedRect(body, 17, 17)
+        tail_x = body.center().x()
+        tail_y = body.bottom()
+        path.moveTo(tail_x - 12, tail_y - 1)
+        path.cubicTo(tail_x - 5, tail_y + 5, tail_x + 1, tail_y + 8, tail_x + 10, tail_y - 1)
+        return path

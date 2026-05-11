@@ -192,7 +192,6 @@ class PetWindow(QWidget):
         elif event.button() == Qt.LeftButton:
             self._drag_intent.release()
             self.controller.handle_click()
-            self._say_random_line(force=True)
             event.accept()
 
     def mouseDoubleClickEvent(self, event):  # noqa: N802 - Qt override
