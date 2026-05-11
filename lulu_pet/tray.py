@@ -30,10 +30,7 @@ class TrayController:
         top_action.triggered.connect(self.pet_window.set_always_on_top)
         menu.addAction(top_action)
         menu.addSeparator()
-        menu.addAction("随机运动", self.pet_window.trigger_random_action)
-        menu.addAction("随机表情包", self.pet_window.trigger_sticker)
         menu.addAction("休息一下", self.pet_window.trigger_rest)
-        menu.addAction("设置", self.pet_window.open_settings)
         menu.addSeparator()
         menu.addAction("退出", QApplication.instance().quit)
         return menu

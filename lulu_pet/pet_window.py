@@ -20,6 +20,17 @@ from .settings_dialog import SettingsDialog
 from .sticker_popup import StickerPopup
 
 
+LOW_QUALITY_STICKER_GIFS = {
+    "lulu_transparent_15.gif",
+    "lulu_transparent_16.gif",
+    "lulu_transparent_17.gif",
+    "lulu_transparent_19.gif",
+    "lulu_transparent_20.gif",
+}
+
+STICKER_PLAYBACK_SPEED_PERCENT = 75
+
+
 class PetWindow(QWidget):
     def __init__(self, controller: PetController, settings: PetSettings, settings_store: SettingsStore | None = None):
         super().__init__()
@@ -40,13 +51,17 @@ class PetWindow(QWidget):
         self._sticker_pixmap = QPixmap()
         self._sticker_active = False
         self._last_sticker_path: Path | None = None
+        self._next_sticker_index = 0
+        self._resting = False
         self._sticker_timer = QTimer(self)
         self._sticker_timer.setSingleShot(True)
         self._sticker_timer.timeout.connect(self._clear_sticker)
-        self._sticker_assets = sorted(resource_path("assets", "lulu_transparent_gifs").glob("*.gif"))
+        self._sticker_assets = self._load_sticker_assets()
         self._character_key = ""
+        self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
         self._character_assets = {
             "body": resource_path("assets", "lulu_transparent_gifs", "lulu_transparent_09.gif"),
+            "rest": self._rest_character_asset,
         }
 
         self.setWindowTitle("水豚噜噜")
@@ -89,11 +104,11 @@ class PetWindow(QWidget):
         self._say_random_line(force=True)
 
     def trigger_rest(self) -> None:
-        self.motion.start(MotionMode.SLEEP)
+        self._enter_rest_mode()
         self._bubble.show_message("噜噜提醒你休息一下。", self)
 
     def trigger_sticker(self) -> None:
-        source = random.choice(self._sticker_assets) if self._sticker_assets else self.controller.assets.random_file_path()
+        source = self._next_sticker_asset() if self._sticker_assets else self.controller.assets.random_file_path()
         self._load_sticker(source or self._character_assets["body"])
 
     def open_settings(self) -> None:
@@ -112,10 +127,7 @@ class PetWindow(QWidget):
 
     def context_menu(self) -> QMenu:
         menu = QMenu(self)
-        menu.addAction("随机运动", self.trigger_random_action)
-        menu.addAction("随机表情包", self.trigger_sticker)
         menu.addAction("休息一下", self.trigger_rest)
-        menu.addAction("设置", self.open_settings)
         menu.addSeparator()
 
         visible_action = QAction("隐藏" if self.isVisible() else "显示", menu)
@@ -149,6 +161,7 @@ class PetWindow(QWidget):
         elif event.buttons() & Qt.LeftButton:
             global_pos = event.globalPosition().toPoint()
             if self._drag_intent.move(global_pos.x(), global_pos.y()):
+                self._leave_rest_mode()
                 self._dragging = True
                 self.controller.start_drag()
                 self.motion.start_drag()
@@ -165,13 +178,22 @@ class PetWindow(QWidget):
         elif event.button() == Qt.LeftButton:
             self._drag_intent.release()
             self.controller.handle_click()
+            self._say_random_line(force=True)
+            event.accept()
+
+    def mouseDoubleClickEvent(self, event):  # noqa: N802 - Qt override
+        if event.button() == Qt.LeftButton:
+            self.controller.handle_click()
             self.trigger_sticker()
             self._say_random_line(force=True)
             event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
     def paintEvent(self, event):  # noqa: N802 - Qt override
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
         painter.setCompositionMode(QPainter.CompositionMode_Source)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 0))
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
@@ -202,11 +224,17 @@ class PetWindow(QWidget):
         remove_windows_frame_artifacts(int(self.winId()))
 
     def _on_tick(self) -> None:
+        if self._sticker_active:
+            if self._sticker_movie:
+                self._sticker_movie.jumpToNextFrame()
+            self.update()
+            return
+        if self._resting:
+            self.update()
+            return
         self._motion_frame = self.motion.tick()
         self.move(self._motion_frame.x, self._motion_frame.y)
         self._apply_character_for_mode(self._motion_frame.mode)
-        if self._sticker_active and self._sticker_movie:
-            self._sticker_movie.jumpToNextFrame()
         self.update()
 
     def _move_drag(self, global_pos: QPoint) -> None:
@@ -303,6 +331,7 @@ class PetWindow(QWidget):
         movie = QMovie(str(path))
         if movie.isValid():
             movie.setCacheMode(QMovie.CacheAll)
+            movie.setSpeed(STICKER_PLAYBACK_SPEED_PERCENT)
             movie.frameChanged.connect(lambda _: self._set_sticker_frame(movie))
             self._sticker_movie = movie
             self._sticker_active = True
@@ -316,6 +345,44 @@ class PetWindow(QWidget):
         if self._sticker_active:
             self._sticker_timer.start(2600)
             self.update()
+
+    def _next_sticker_asset(self) -> Path:
+        source = self._sticker_assets[self._next_sticker_index % len(self._sticker_assets)]
+        self._next_sticker_index += 1
+        return source
+
+    def _load_sticker_assets(self) -> list[Path]:
+        sticker_dir = resource_path("assets", "lulu_transparent_gifs")
+        return [
+            path
+            for path in sorted(sticker_dir.glob("*.gif"))
+            if path.name not in LOW_QUALITY_STICKER_GIFS
+        ]
+
+    def _enter_rest_mode(self) -> None:
+        self._resting = True
+        self._clear_sticker()
+        self.motion.start(MotionMode.SLEEP, duration_ticks=999999)
+        self.motion.x = self.motion.bounds.right - self.width()
+        self.motion.y = self.motion.bounds.bottom - self.height()
+        self._motion_frame = MotionFrame(
+            MotionMode.SLEEP,
+            int(self.motion.x),
+            int(self.motion.y),
+            self.motion.frame_index,
+            self.motion.facing,
+        )
+        self.move(self._motion_frame.x, self._motion_frame.y)
+        self._character_key = "rest"
+        self._load_character(self._rest_character_asset)
+        self.update()
+
+    def _leave_rest_mode(self) -> None:
+        if not self._resting:
+            return
+        self._resting = False
+        self._character_key = ""
+        self._apply_character_for_mode(self.motion.mode)
 
     def _set_sticker_frame(self, movie: QMovie) -> None:
         self._sticker_pixmap = movie.currentPixmap()
