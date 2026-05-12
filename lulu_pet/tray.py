@@ -37,6 +37,7 @@ class TrayController:
         menu.addAction(top_action)
         menu.addSeparator()
         menu.addAction("休息一下", self.pet_window.trigger_rest)
+        self.pet_window.add_character_change_menu(menu)
         menu.addSeparator()
         menu.addAction("退出", QApplication.instance().quit)
         return menu

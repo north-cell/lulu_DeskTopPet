@@ -28,6 +28,10 @@ def action_texts(menu):
     return [action.text() for action in menu.actions() if not action.isSeparator()]
 
 
+def submenu_by_text(menu, text):
+    return next(action.menu() for action in menu.actions() if action.text() == text)
+
+
 class MenuTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -60,6 +64,27 @@ class MenuTests(unittest.TestCase):
 
             self.assertTrue(window.motion_paused)
             self.assertTrue(next(action for action in window.context_menu().actions() if action.text() == "暂停移动").isChecked())
+        finally:
+            window.close()
+
+    def test_pet_context_menu_can_switch_character_images(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            menu = window.context_menu()
+            change_menu = submenu_by_text(menu, "更换形象")
+            texts = action_texts(change_menu)
+
+            self.assertEqual(texts, ["游泳噜噜", "得瑟噜噜"])
+
+            swim_action = next(action for action in change_menu.actions() if action.text() == "游泳噜噜")
+            swim_action.trigger()
+
+            self.assertEqual(window._character_assets["body"].name, "lulu_transparent_01.gif")
+
+            proud_action = next(action for action in change_menu.actions() if action.text() == "得瑟噜噜")
+            proud_action.trigger()
+
+            self.assertEqual(window._character_assets["body"].name, "lulu_transparent_09.gif")
         finally:
             window.close()
 

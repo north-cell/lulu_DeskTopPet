@@ -29,6 +29,8 @@ LOW_QUALITY_STICKER_GIFS = {
 }
 
 STICKER_PLAYBACK_SPEED_PERCENT = 75
+DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
+SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 
 
 class PetWindow(QWidget):
@@ -60,8 +62,10 @@ class PetWindow(QWidget):
         self._sticker_assets = self._load_sticker_assets()
         self._character_key = ""
         self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
+        self._default_character_asset = resource_path("assets", "lulu_transparent_gifs", DEFAULT_CHARACTER_GIF)
+        self._swimming_character_asset = resource_path("assets", "lulu_transparent_gifs", SWIMMING_CHARACTER_GIF)
         self._character_assets = {
-            "body": resource_path("assets", "lulu_transparent_gifs", "lulu_transparent_09.gif"),
+            "body": self._default_character_asset,
             "rest": self._rest_character_asset,
         }
 
@@ -119,6 +123,12 @@ class PetWindow(QWidget):
         source = self._next_sticker_asset() if self._sticker_assets else self.controller.assets.random_file_path()
         self._load_sticker(source or self._character_assets["body"])
 
+    def show_swimming_character(self) -> None:
+        self._set_body_character(self._swimming_character_asset)
+
+    def show_proud_character(self) -> None:
+        self._set_body_character(self._default_character_asset)
+
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.settings, self)
         if dialog.exec() != dialog.Accepted:
@@ -136,6 +146,7 @@ class PetWindow(QWidget):
     def context_menu(self) -> QMenu:
         menu = QMenu(self)
         menu.addAction("休息一下", self.trigger_rest)
+        self.add_character_change_menu(menu)
         menu.addSeparator()
 
         visible_action = QAction("隐藏" if self.isVisible() else "显示", menu)
@@ -157,6 +168,13 @@ class PetWindow(QWidget):
         menu.addSeparator()
         menu.addAction("退出", QApplication.instance().quit)
         return menu
+
+    def add_character_change_menu(self, menu: QMenu) -> QMenu:
+        change_menu = QMenu("更换形象", menu)
+        change_menu.addAction("游泳噜噜", self.show_swimming_character)
+        change_menu.addAction("得瑟噜噜", self.show_proud_character)
+        menu.addMenu(change_menu)
+        return change_menu
 
     def mousePressEvent(self, event):  # noqa: N802 - Qt override
         if event.button() == Qt.LeftButton:
@@ -334,6 +352,14 @@ class PetWindow(QWidget):
         pixmap = QPixmap(str(path))
         if not pixmap.isNull():
             self._pixmap = pixmap
+
+    def _set_body_character(self, path: Path) -> None:
+        self._character_assets["body"] = path
+        self._resting = False
+        self._clear_sticker()
+        self._character_key = ""
+        self._apply_character_for_mode(self.motion.mode)
+        self.update()
 
     def _set_character_frame(self, movie: QMovie) -> None:
         self._pixmap = movie.currentPixmap()
