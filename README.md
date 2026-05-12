@@ -1,86 +1,149 @@
-# 水豚噜噜桌面宠物
+# Lulu Desktop Pet
 
-一个 Windows 优先的 Python 桌面宠物 MVP。重点是可爱陪伴：透明置顶、拖拽、桌面行走、跑步、顺序播放表情包、气泡台词、右键菜单和系统托盘。
+水豚噜噜桌面宠物。一个 Windows 优先的小型桌宠应用，会在桌面底部走来走去、被你拎起来、落下、睡觉、换形象，也会在右键菜单和系统托盘里提供常用操作。
 
-## 功能
+> 适合想要一个轻量、可爱、开箱即用桌面陪伴的小工具。
 
-- 透明无边框桌宠窗口
-- 现成透明 GIF 水豚噜噜本体，不再使用通用水豚绘制替身
-- 自动在桌面底部行走、跑步、睡觉
-- 左键拖拽，释放后会下落回桌面底部
-- 单击触发气泡台词，双击按文件夹顺序循环播放动图表情包，播放期间噜噜停在原地
-- 右键“休息一下”会切换为 `qq_lulu_04.gif`，并固定在屏幕右下角
-- 右键菜单：休息一下、隐藏/显示、置顶、退出
-- 系统托盘：显示/隐藏、置顶、休息一下、退出
-- 表情包素材和台词通过 `assets/manifest.json` 替换
+## 下载使用
 
-## 运行
+### 方式一：下载打包版
+
+推荐普通用户使用打包版，不需要安装 Python。
+
+1. 打开项目的 GitHub Releases 页面。
+2. 下载最新版本里的 `LuluDesktopPet.zip` 或 `LuluDesktopPet.rar`。
+3. 解压整个压缩包。
+4. 进入解压后的 `LuluDesktopPet/` 文件夹。
+5. 双击运行 `LuluDesktopPet.exe`。
+
+注意：不要只把 `LuluDesktopPet.exe` 单独拖出来运行。这个程序依赖同目录下的 `_internal/`、`assets/`、`config/` 等文件夹，必须保持整个文件夹结构完整。
+
+如果 Windows SmartScreen 提示风险，可以点“更多信息”，再选择“仍要运行”。这是未签名个人应用常见提示。
+
+### 方式二：从源码运行
+
+适合开发者或想自己改素材、改逻辑的用户。
 
 ```powershell
+git clone https://github.com/north-cell/lulu_DeskTopPet.git
+cd lulu_DeskTopPet
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+
 python -m lulu_pet
 ```
 
-如果只想验证核心逻辑，不需要安装 PySide6：
+也可以直接运行：
 
 ```powershell
-python -m unittest discover -s tests -v
+python run_lulu_pet.py
 ```
 
-## 水豚噜噜素材
+## 怎么玩
 
-- `assets/lulu_transparent_gifs/`: 20 张现成透明底水豚噜噜 GIF，用作桌宠本体动作。
+- 左键单击：触发一次互动。
+- 左键拖拽：把噜噜拎起来；松手后噜噜会下落回桌面底部。
+- 双击：播放一个噜噜动图表情包。
+- 右键：打开菜单，可以休息、隐藏/显示、暂停移动、保持置顶、退出。
+- 右键 `更换形象`：在“游泳噜噜”和“得瑟噜噜”之间切换。
+- 系统托盘图标：也可以打开显示/隐藏、休息、置顶、退出等操作。
 
-这些素材按本地自用处理，不建议直接随公开项目发布。
+## 功能特性
 
-表情包播放会跳过几张低清或带场景背景的原始 GIF，避免在桌宠区域出现明显噪点、发糊或背景块。
+- 透明无边框桌宠窗口
+- 桌面底部自动行走、跑步、睡觉
+- 拖拽后自然下落
+- 拎起和下落时使用专属噜噜形象
+- 双击按素材顺序播放透明 GIF 表情包
+- 气泡台词
+- 右键菜单和系统托盘菜单
+- 可切换形象
+- 暖棕色噜噜风格菜单
+- PyInstaller 打包支持
 
-`assets/manifest.json` 支持两种写法：
+## 系统要求
 
-- `file`: 单张 PNG/GIF/SVG/WebP
-- `files`: 多张 PNG/GIF/SVG/WebP，表情包触发时按文件夹素材顺序循环播放
+打包版：
 
-表情包分组名称保持为：
+- Windows 10/11
+- 不需要手动安装 Python
 
-- `idle`
-- `walk`
-- `sleep`
-- `happy`
-- `dragged`
-- `clicked`
+源码运行：
 
-`duration_ms` 控制动作持续时间，`weight` 控制随机出现概率，`lines` 控制气泡台词。
+- Windows 10/11
+- Python 3.10+
+- PySide6
 
-## 打包 Windows 可执行文件
+## 自己打包
+
+如果你想从源码生成 Windows 可执行版本：
 
 ```powershell
 pip install -r requirements.txt
 pyinstaller lulu-pet.spec
 ```
 
-打包结果会出现在 `dist/LuluDesktopPet/`。
-
-### 发给别人使用
-
-当前打包方式是 PyInstaller 的 one-folder 模式，`LuluDesktopPet.exe` 不是一个完全独立的单文件程序。它依赖同目录下的 `_internal/`、`assets/`、`config/` 等运行文件，所以只把：
+打包完成后，结果会生成在：
 
 ```text
-dist/LuluDesktopPet/LuluDesktopPet.exe
+dist/LuluDesktopPet/
 ```
 
-单独发给别人通常无法运行。
+分发给别人时，请压缩整个 `dist/LuluDesktopPet/` 文件夹，而不是只发送 exe。
 
-正确分发方式：
+## 素材与配置
 
-1. 打包后进入 `dist/`。
-2. 把整个 `LuluDesktopPet/` 文件夹压缩成 zip。
-3. 发给对方这个 zip。
-4. 对方解压后运行里面的 `LuluDesktopPet.exe`。
+主要素材目录：
 
-对方电脑建议使用 Windows 10/11。如果首次运行被 Windows SmartScreen 拦截，选择“更多信息”再继续运行即可。不要把 exe 从文件夹里单独拖出来运行，否则资源文件路径会丢失。
+```text
+assets/lulu_transparent_gifs/
+```
 
-## 当前边界
+配置文件：
 
-首版不包含 Live2D、大模型聊天、语音、壁纸系统和社区功能。后续可以在不改核心状态机的前提下替换素材或增加 AI 对话面板。
+```text
+assets/manifest.json
+config/settings.json
+```
+
+`assets/manifest.json` 可配置动作素材和台词。支持单文件：
+
+```json
+{
+  "file": "example.gif"
+}
+```
+
+也支持多文件顺序播放：
+
+```json
+{
+  "files": ["a.gif", "b.gif", "c.gif"]
+}
+```
+
+## 开发
+
+运行测试：
+
+```powershell
+python -m unittest discover -s tests
+```
+
+项目结构：
+
+```text
+lulu_pet/      应用代码
+assets/        桌宠素材和动作配置
+config/        本地设置
+tests/         单元测试
+scripts/       素材处理和辅助脚本
+```
+
+## 说明
+
+这是一个偏个人向、轻量级的桌宠项目，目标是“下载后能直接陪你待在桌面上”。目前不包含 Live2D、语音、AI 聊天或插件市场。
+
+素材请按你的使用场景确认授权后再公开分发。
