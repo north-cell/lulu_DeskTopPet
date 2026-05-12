@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import random
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QRect, Qt, QTimer
@@ -10,6 +11,8 @@ from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 from .bubble import BubbleWidget
 from .controller import PetController
+from .focus_records import FocusRecord, FocusRecordStore
+from .focus_records_dialog import FocusRecordsDialog
 from .focus_timer import FocusTimerWidget
 from .interaction import DragIntentTracker
 from .menu_style import apply_lulu_menu_style
@@ -34,16 +37,24 @@ STICKER_PLAYBACK_SPEED_PERCENT = 75
 DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
+PAJAMA_CHARACTER_GIF = "xhs_lulu_02.gif"
 FOCUS_STAGE_SECONDS = 5 * 60
 FOCUS_STICKER_DURATION_MS = 2600
 
 
 class PetWindow(QWidget):
-    def __init__(self, controller: PetController, settings: PetSettings, settings_store: SettingsStore | None = None):
+    def __init__(
+        self,
+        controller: PetController,
+        settings: PetSettings,
+        settings_store: SettingsStore | None = None,
+        focus_record_store: FocusRecordStore | None = None,
+    ):
         super().__init__()
         self.controller = controller
         self.settings = settings
         self.settings_store = settings_store
+        self.focus_record_store = focus_record_store or FocusRecordStore(resource_path("config", "focus_records.json"))
         self._drag_offset = QPoint()
         self._press_global = QPoint()
         self._dragging = False
@@ -64,6 +75,7 @@ class PetWindow(QWidget):
         self._motion_paused = False
         self._focus_active = False
         self._focus_started_at = 0.0
+        self._focus_started_wall_time: datetime | None = None
         self._focus_stage_index = -1
         self._focus_character_asset: Path | None = None
         self._sticker_timer = QTimer(self)
@@ -72,11 +84,13 @@ class PetWindow(QWidget):
         self._sticker_assets = self._load_sticker_assets()
         self._focus_timer = FocusTimerWidget()
         self._focus_timer.finished_requested.connect(self.end_focus_mode)
+        self._focus_records_dialog: FocusRecordsDialog | None = None
         self._character_key = ""
         self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
         self._default_character_asset = resource_path("assets", "lulu_transparent_gifs", DEFAULT_CHARACTER_GIF)
         self._swimming_character_asset = resource_path("assets", "lulu_transparent_gifs", SWIMMING_CHARACTER_GIF)
         self._lifted_character_asset = resource_path("assets", "lulu_transparent_gifs", LIFTED_CHARACTER_GIF)
+        self._pajama_character_asset = resource_path("assets", "lulu_transparent_gifs", PAJAMA_CHARACTER_GIF)
         self._character_assets = {
             "body": self._default_character_asset,
             "lifted": self._lifted_character_asset,
@@ -153,6 +167,7 @@ class PetWindow(QWidget):
             return
         self._focus_active = True
         self._focus_started_at = time.monotonic()
+        self._focus_started_wall_time = datetime.now()
         self._focus_stage_index = -1
         self._resting = False
         self._dragging = False
@@ -178,7 +193,9 @@ class PetWindow(QWidget):
         if not self._focus_active:
             return
         focused_seconds = self._focus_elapsed_seconds()
+        self._save_focus_record(focused_seconds)
         self._focus_active = False
+        self._focus_started_wall_time = None
         self._focus_timer.hide()
         self._focus_stage_index = -1
         self._focus_character_asset = None
@@ -193,6 +210,9 @@ class PetWindow(QWidget):
 
     def show_swimming_character(self) -> None:
         self._set_body_character(self._swimming_character_asset)
+
+    def show_pajama_character(self) -> None:
+        self._set_body_character(self._pajama_character_asset)
 
     def show_proud_character(self) -> None:
         self._set_body_character(self._default_character_asset)
@@ -215,11 +235,12 @@ class PetWindow(QWidget):
         menu = apply_lulu_menu_style(QMenu(self))
         if self._focus_active:
             menu.addAction("结束专注模式", self.end_focus_mode)
+            menu.addAction("学习记录", self.show_focus_records)
             menu.addSeparator()
             menu.addAction("退出", QApplication.instance().quit)
             return menu
 
-        menu.addAction("专注模式", self.trigger_focus_mode)
+        self.add_focus_mode_menu(menu)
         menu.addAction("休息一下", self.trigger_rest)
         self.add_character_change_menu(menu)
         menu.addSeparator()
@@ -247,9 +268,27 @@ class PetWindow(QWidget):
     def add_character_change_menu(self, menu: QMenu) -> QMenu:
         change_menu = apply_lulu_menu_style(QMenu("更换形象", menu))
         change_menu.addAction("游泳噜噜", self.show_swimming_character)
+        change_menu.addAction("睡衣噜噜", self.show_pajama_character)
         change_menu.addAction("得瑟噜噜", self.show_proud_character)
         menu.addMenu(change_menu)
         return change_menu
+
+    def add_focus_mode_menu(self, menu: QMenu, start_focus_callback=None) -> QMenu:
+        focus_menu = apply_lulu_menu_style(QMenu("专注模式", menu))
+        focus_menu.addAction("开始专注", start_focus_callback or self.trigger_focus_mode)
+        focus_menu.addAction("学习记录", self.show_focus_records)
+        menu.addMenu(focus_menu)
+        return focus_menu
+
+    def show_focus_records(self) -> None:
+        if self._focus_records_dialog:
+            self._focus_records_dialog.close()
+        self._focus_records_dialog = FocusRecordsDialog(
+            self.focus_record_store.load(),
+            self,
+            record_store=self.focus_record_store,
+        )
+        self._focus_records_dialog.show()
 
     def mousePressEvent(self, event):  # noqa: N802 - Qt override
         if event.button() == Qt.LeftButton:
@@ -571,6 +610,21 @@ class PetWindow(QWidget):
         if hours:
             return f"{hours}小时{minutes:02d}分{secs:02d}秒"
         return f"{minutes}分{secs:02d}秒"
+
+    def _save_focus_record(self, focused_seconds: int) -> None:
+        if focused_seconds < 60:
+            return
+        started_at = self._focus_started_wall_time or datetime.now()
+        ended_at = datetime.now()
+        self.focus_record_store.add(
+            FocusRecord(
+                date=started_at.strftime("%Y-%m-%d"),
+                start_time=started_at.strftime("%H:%M:%S"),
+                end_time=ended_at.strftime("%H:%M:%S"),
+                duration_seconds=max(0, int(focused_seconds)),
+                duration_text=self._format_focus_duration(focused_seconds),
+            )
+        )
 
     def _desktop_bounds(self) -> DesktopBounds:
         screen = self.screen().availableGeometry() if self.screen() else None

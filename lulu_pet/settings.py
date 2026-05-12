@@ -8,7 +8,7 @@ from .models import PetSettings
 
 
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "window_size": [220, 180],
+    "window_size": [184, 151],
     "always_on_top": True,
     "speech_interval_seconds": 45,
     "edge_snap": True,

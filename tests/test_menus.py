@@ -1,5 +1,7 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -7,10 +9,11 @@ from PySide6.QtWidgets import QApplication
 
 from lulu_pet.assets import AssetManager
 from lulu_pet.controller import PetController
+from lulu_pet.focus_records import FocusRecord, FocusRecordStore
 from lulu_pet.models import PetSettings
 from lulu_pet.motion import MotionMode
 from lulu_pet.pet_window import PetWindow
-from lulu_pet.tray import TrayController
+from lulu_pet.tray import TrayController, _tray_icon
 
 
 def default_settings() -> PetSettings:
@@ -32,6 +35,10 @@ def submenu_by_text(menu, text):
     return next(action.menu() for action in menu.actions() if action.text() == text)
 
 
+def action_by_text(menu, text):
+    return next(action for action in menu.actions() if action.text() == text)
+
+
 def assert_lulu_menu_style(test_case, menu):
     style = menu.styleSheet()
     test_case.assertIn("#FFF4DA", style)
@@ -48,20 +55,42 @@ class MenuTests(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def test_pet_context_menu_hides_manual_random_and_settings_actions(self):
-        window = PetWindow(PetController(AssetManager(None)), default_settings())
-        try:
-            texts = action_texts(window.context_menu())
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FocusRecordStore(Path(tmp) / "focus_records.json")
+            window = PetWindow(PetController(AssetManager(None)), default_settings(), focus_record_store=store)
+            try:
+                menu = window.context_menu()
+                texts = action_texts(menu)
 
-            self.assertNotIn("随机运动", texts)
-            self.assertNotIn("随机表情包", texts)
-            self.assertNotIn("设置", texts)
-            self.assertIn("专注模式", texts)
-            self.assertIn("休息一下", texts)
-            self.assertIn("暂停移动", texts)
-            self.assertIn("保持置顶", texts)
-            self.assertIn("退出", texts)
-        finally:
-            window.close()
+                self.assertNotIn("随机运动", texts)
+                self.assertNotIn("随机表情包", texts)
+                self.assertNotIn("设置", texts)
+                self.assertIn("专注模式", texts)
+                self.assertIn("休息一下", texts)
+                self.assertIn("暂停移动", texts)
+                self.assertIn("保持置顶", texts)
+                self.assertIn("退出", texts)
+                focus_menu = submenu_by_text(menu, "专注模式")
+                self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
+                self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
+            finally:
+                window.close()
+
+    def test_pet_context_menu_learning_records_action_opens_dialog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = FocusRecordStore(Path(tmp) / "focus_records.json")
+            store.add(FocusRecord("2026-05-11", "08:00:00", "08:20:00", 20 * 60, "20分00秒"))
+            store.add(FocusRecord("2026-05-12", "09:00:00", "09:30:00", 30 * 60, "30分00秒"))
+            window = PetWindow(PetController(AssetManager(None)), default_settings(), focus_record_store=store)
+            try:
+                records_action = action_by_text(submenu_by_text(window.context_menu(), "专注模式"), "学习记录")
+
+                records_action.trigger()
+
+                self.assertIsNotNone(window._focus_records_dialog)
+                self.assertTrue(window._focus_records_dialog.isVisible())
+            finally:
+                window.close()
 
     def test_pet_context_menu_in_focus_mode_only_keeps_end_focus_and_exit(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
@@ -70,7 +99,7 @@ class MenuTests(unittest.TestCase):
 
             texts = action_texts(window.context_menu())
 
-            self.assertEqual(texts, ["结束专注模式", "退出"])
+            self.assertEqual(texts, ["结束专注模式", "学习记录", "退出"])
         finally:
             window.close()
 
@@ -96,12 +125,17 @@ class MenuTests(unittest.TestCase):
             change_menu = submenu_by_text(menu, "更换形象")
             texts = action_texts(change_menu)
 
-            self.assertEqual(texts, ["游泳噜噜", "得瑟噜噜"])
+            self.assertEqual(texts, ["游泳噜噜", "睡衣噜噜", "得瑟噜噜"])
 
             swim_action = next(action for action in change_menu.actions() if action.text() == "游泳噜噜")
             swim_action.trigger()
 
             self.assertEqual(window._character_assets["body"].name, "lulu_transparent_01.gif")
+
+            pajama_action = next(action for action in change_menu.actions() if action.text() == "睡衣噜噜")
+            pajama_action.trigger()
+
+            self.assertEqual(window._character_assets["body"].name, "xhs_lulu_02.gif")
 
             proud_action = next(action for action in change_menu.actions() if action.text() == "得瑟噜噜")
             proud_action.trigger()
@@ -114,9 +148,11 @@ class MenuTests(unittest.TestCase):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         try:
             menu = window.context_menu()
+            focus_menu = submenu_by_text(menu, "专注模式")
             change_menu = submenu_by_text(menu, "更换形象")
 
             assert_lulu_menu_style(self, menu)
+            self.assertEqual(focus_menu.styleSheet(), menu.styleSheet())
             self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
         finally:
             window.close()
@@ -138,7 +174,8 @@ class MenuTests(unittest.TestCase):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         tray = TrayController(window)
         try:
-            texts = action_texts(tray.tray.contextMenu())
+            menu = tray.tray.contextMenu()
+            texts = action_texts(menu)
 
             self.assertNotIn("随机运动", texts)
             self.assertNotIn("随机表情包", texts)
@@ -149,6 +186,9 @@ class MenuTests(unittest.TestCase):
             self.assertIn("暂停移动", texts)
             self.assertIn("保持置顶", texts)
             self.assertIn("退出", texts)
+            focus_menu = submenu_by_text(menu, "专注模式")
+            self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
+            self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
         finally:
             tray.hide()
             window.close()
@@ -164,6 +204,7 @@ class MenuTests(unittest.TestCase):
 
             self.assertIn("显示/隐藏", texts)
             self.assertIn("结束专注模式", texts)
+            self.assertIn("学习记录", texts)
             self.assertIn("退出", texts)
             self.assertNotIn("专注模式", texts)
             self.assertNotIn("休息一下", texts)
@@ -194,13 +235,28 @@ class MenuTests(unittest.TestCase):
         tray = TrayController(window)
         try:
             menu = tray.tray.contextMenu()
+            focus_menu = submenu_by_text(menu, "专注模式")
             change_menu = submenu_by_text(menu, "更换形象")
 
             assert_lulu_menu_style(self, menu)
+            self.assertEqual(focus_menu.styleSheet(), menu.styleSheet())
             self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
         finally:
             tray.hide()
             window.close()
+
+    def test_tray_icon_is_cute_little_orange(self):
+        pixmap = _tray_icon().pixmap(64, 64)
+        image = pixmap.toImage()
+
+        center = image.pixelColor(32, 34)
+        leaf = image.pixelColor(35, 13)
+
+        self.assertGreater(center.red(), 220)
+        self.assertGreater(center.green(), 120)
+        self.assertLess(center.blue(), 80)
+        self.assertGreater(leaf.green(), leaf.red())
+        self.assertGreater(leaf.green(), leaf.blue())
 
 
 if __name__ == "__main__":

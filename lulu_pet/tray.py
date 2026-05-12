@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -36,11 +37,12 @@ class TrayController:
         menu.addAction("显示/隐藏", self.pet_window.toggle_visible)
         if self.pet_window.focus_mode_active:
             menu.addAction("结束专注模式", self._end_focus_mode)
+            menu.addAction("学习记录", self.pet_window.show_focus_records)
             menu.addSeparator()
             menu.addAction("退出", QApplication.instance().quit)
             return
 
-        menu.addAction("专注模式", self._trigger_focus_mode)
+        self.pet_window.add_focus_mode_menu(menu, self._trigger_focus_mode)
         pause_action = QAction("暂停移动", menu)
         pause_action.setCheckable(True)
         pause_action.setChecked(self.pet_window.motion_paused)
@@ -75,11 +77,23 @@ def _tray_icon() -> QIcon:
     pixmap.fill(QColor(0, 0, 0, 0))
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
-    painter.setBrush(QColor(151, 111, 82))
-    painter.setPen(QColor(93, 66, 49))
-    painter.drawRoundedRect(8, 18, 48, 34, 18, 18)
-    painter.setBrush(QColor(35, 25, 20))
-    painter.drawEllipse(24, 31, 4, 4)
-    painter.drawEllipse(38, 31, 4, 4)
+    painter.setPen(QColor(190, 91, 26))
+    painter.setBrush(QColor(248, 148, 45))
+    painter.drawEllipse(12, 18, 40, 38)
+
+    painter.setPen(QColor(76, 132, 58))
+    painter.setBrush(QColor(91, 168, 75))
+    painter.drawEllipse(32, 8, 18, 10)
+
+    painter.setPen(QColor(111, 77, 40))
+    painter.drawLine(31, 18, 34, 10)
+
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(QColor(92, 54, 31))
+    painter.drawEllipse(25, 34, 3, 3)
+    painter.drawEllipse(37, 34, 3, 3)
+    painter.setBrush(QColor(219, 107, 35))
+    painter.drawEllipse(18, 40, 6, 4)
+    painter.drawEllipse(42, 40, 6, 4)
     painter.end()
     return QIcon(pixmap)
