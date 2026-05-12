@@ -63,6 +63,7 @@ class PetWindow(QWidget):
         self._bubble = BubbleWidget()
         self._sticker = StickerPopup()
         self._always_on_top = settings.always_on_top
+        self._has_been_shown = False
         self._motion_frame: MotionFrame | None = None
         self._movie: QMovie | None = None
         self._pixmap = QPixmap()
@@ -373,7 +374,17 @@ class PetWindow(QWidget):
 
     def showEvent(self, event):  # noqa: N802 - Qt override
         super().showEvent(event)
+        self._has_been_shown = True
         self._remove_native_frame_artifacts()
+
+    def hideEvent(self, event):  # noqa: N802 - Qt override
+        self._bubble.hide()
+        super().hideEvent(event)
+
+    def moveEvent(self, event):  # noqa: N802 - Qt override
+        super().moveEvent(event)
+        if hasattr(self._bubble, "follow_anchor"):
+            self._bubble.follow_anchor(self)
 
     def _window_flags(self):
         flags = Qt.FramelessWindowHint | Qt.Tool | Qt.NoDropShadowWindowHint | Qt.BypassWindowManagerHint
@@ -415,6 +426,9 @@ class PetWindow(QWidget):
         self.update()
 
     def _say_random_line(self, force: bool = False) -> None:
+        if self._has_been_shown and not self.isVisible():
+            self._bubble.hide()
+            return
         if force:
             line = self.controller.assets.random_line(self.controller.current_action.name)
         else:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF, QRect, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRegion
 from PySide6.QtWidgets import QLabel, QWidget
 
@@ -31,9 +31,14 @@ class BubbleWidget(QWidget):
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self.hide)
+        self._anchor: QWidget | None = None
+        self._anchor_offset = QPoint()
 
     def show_message(self, text: str, anchor: QWidget, duration_ms: int = 2600) -> None:
         if not text:
+            return
+        if not anchor.isVisible():
+            self.hide()
             return
         self.label.setText(text)
         self.label.adjustSize()
@@ -49,9 +54,21 @@ class BubbleWidget(QWidget):
         if y < 0:
             y = anchor_pos.y() + 8
         self.move(x, y)
+        self._anchor = anchor
+        self._anchor_offset = self.pos() - anchor_pos
         self.show()
         self._remove_native_frame_artifacts()
         self._timer.start(duration_ms)
+
+    def follow_anchor(self, anchor: QWidget | None = None) -> None:
+        anchor = anchor or self._anchor
+        if not self.isVisible() or anchor is None:
+            return
+        if not anchor.isVisible():
+            self.hide()
+            return
+        anchor_pos = anchor.mapToGlobal(anchor.rect().topLeft())
+        self.move(anchor_pos + self._anchor_offset)
 
     def showEvent(self, event):  # noqa: N802 - Qt override
         super().showEvent(event)
