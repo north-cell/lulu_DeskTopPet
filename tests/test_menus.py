@@ -32,6 +32,16 @@ def submenu_by_text(menu, text):
     return next(action.menu() for action in menu.actions() if action.text() == text)
 
 
+def assert_lulu_menu_style(test_case, menu):
+    style = menu.styleSheet()
+    test_case.assertIn("#FFF4DA", style)
+    test_case.assertIn("#3B271C", style)
+    test_case.assertIn("#C78652", style)
+    test_case.assertIn("padding: 5px;", style)
+    test_case.assertIn("font-size: 12px;", style)
+    test_case.assertIn("padding: 5px 22px 5px 14px;", style)
+
+
 class MenuTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -88,6 +98,17 @@ class MenuTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_pet_context_menu_and_submenu_use_lulu_style(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            menu = window.context_menu()
+            change_menu = submenu_by_text(menu, "更换形象")
+
+            assert_lulu_menu_style(self, menu)
+            self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
+        finally:
+            window.close()
+
     def test_paused_motion_does_not_move_on_tick(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         try:
@@ -131,6 +152,19 @@ class MenuTests(unittest.TestCase):
             action.trigger()
 
             self.assertTrue(window.motion_paused)
+        finally:
+            tray.hide()
+            window.close()
+
+    def test_tray_menu_and_submenu_use_lulu_style(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        tray = TrayController(window)
+        try:
+            menu = tray.tray.contextMenu()
+            change_menu = submenu_by_text(menu, "更换形象")
+
+            assert_lulu_menu_style(self, menu)
+            self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
         finally:
             tray.hide()
             window.close()

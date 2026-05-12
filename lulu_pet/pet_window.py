@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QWidget
 from .bubble import BubbleWidget
 from .controller import PetController
 from .interaction import DragIntentTracker
+from .menu_style import apply_lulu_menu_style
 from .models import PetSettings
 from .motion import DesktopBounds, MotionEngine, MotionFrame, MotionMode
 from .native_window import remove_windows_frame_artifacts
@@ -147,7 +148,7 @@ class PetWindow(QWidget):
         return time_random_motion()
 
     def context_menu(self) -> QMenu:
-        menu = QMenu(self)
+        menu = apply_lulu_menu_style(QMenu(self))
         menu.addAction("休息一下", self.trigger_rest)
         self.add_character_change_menu(menu)
         menu.addSeparator()
@@ -173,7 +174,7 @@ class PetWindow(QWidget):
         return menu
 
     def add_character_change_menu(self, menu: QMenu) -> QMenu:
-        change_menu = QMenu("更换形象", menu)
+        change_menu = apply_lulu_menu_style(QMenu("更换形象", menu))
         change_menu.addAction("游泳噜噜", self.show_swimming_character)
         change_menu.addAction("得瑟噜噜", self.show_proud_character)
         menu.addMenu(change_menu)

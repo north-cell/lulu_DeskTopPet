@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+from .menu_style import apply_lulu_menu_style
 from .pet_window import PetWindow
 
 
@@ -22,7 +23,7 @@ class TrayController:
         self.tray.hide()
 
     def _build_menu(self) -> QMenu:
-        menu = QMenu()
+        menu = apply_lulu_menu_style(QMenu())
         menu.addAction("显示/隐藏", self.pet_window.toggle_visible)
         pause_action = QAction("暂停移动", menu)
         pause_action.setCheckable(True)
