@@ -12,6 +12,7 @@ class PetSettings:
     edge_snap: bool
     autostart: bool
     motion_speed_percent: int = 100
+    contract_name: str = "shouting"
 
 
 @dataclass(frozen=True)

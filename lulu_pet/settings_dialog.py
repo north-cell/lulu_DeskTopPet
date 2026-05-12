@@ -58,4 +58,5 @@ class SettingsDialog(QDialog):
             edge_snap=self.edge_snap.isChecked(),
             autostart=current.autostart,
             motion_speed_percent=self.speed.value(),
+            contract_name=current.contract_name,
         )

@@ -20,7 +20,7 @@ def main() -> int:
     settings_store = SettingsStore(resource_path("config", "settings.json"))
     settings = settings_store.load()
     assets = AssetManager(resource_path("assets", "manifest.json"))
-    controller = PetController(assets, settings.speech_interval_seconds)
+    controller = PetController(assets, settings.speech_interval_seconds, settings.contract_name)
     pet = PetWindow(controller, settings, settings_store)
     tray = TrayController(pet)
 

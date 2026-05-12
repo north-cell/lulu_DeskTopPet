@@ -11,6 +11,7 @@ from PySide6.QtGui import QAction, QBitmap, QColor, QImage, QMovie, QPainter, QP
 from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 from .bubble import BubbleWidget
+from .contract_dialog import ContractDialog
 from .controller import PetController
 from .focus_records import FocusRecord, FocusRecordStore
 from .focus_records_dialog import FocusRecordsDialog
@@ -222,6 +223,19 @@ class PetWindow(QWidget):
     def show_proud_character(self) -> None:
         self._set_body_character(self._default_character_asset)
 
+    def sign_contract(self) -> None:
+        text, accepted = ContractDialog.get_contract_name(self.settings.contract_name, self)
+        if not accepted:
+            return
+        contract_name = text.strip()[:12]
+        if not contract_name:
+            return
+        self.settings = replace(self.settings, contract_name=contract_name)
+        self.controller.set_contract_name(contract_name)
+        if self.settings_store:
+            self.settings_store.save(self.settings)
+        self._bubble.show_message("契约签订成功，噜噜以后会这样叫你。", self)
+
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.settings, self)
         if dialog.exec() != dialog.Accepted:
@@ -247,6 +261,7 @@ class PetWindow(QWidget):
 
         self.add_focus_mode_menu(menu)
         menu.addAction("休息一下", self.trigger_rest)
+        menu.addAction("签订契约", self.sign_contract)
         self.add_character_change_menu(menu)
         menu.addSeparator()
 
@@ -430,7 +445,7 @@ class PetWindow(QWidget):
             self._bubble.hide()
             return
         if force:
-            line = self.controller.assets.random_line(self.controller.current_action.name)
+            line = self.controller.random_line(self.controller.current_action.name)
         else:
             line = self.controller.next_line(time.monotonic())
         self._bubble.show_message(line, self)

@@ -46,6 +46,23 @@ class PetControllerTests(unittest.TestCase):
         self.assertIsInstance(first, str)
         self.assertEqual(second, "")
 
+    def test_contract_name_replaces_shouting_in_speech(self):
+        controller = PetController(AssetManager(None), contract_name="露露")
+        controller.assets.random_line = lambda action_name: "shouting辛苦啦，噜噜陪你。"
+
+        line = controller.next_line(now=10.0)
+
+        self.assertEqual(line, "露露辛苦啦，噜噜陪你。")
+        self.assertNotIn("shouting", line)
+
+    def test_contract_name_can_be_updated(self):
+        controller = PetController(AssetManager(None), contract_name="shouting")
+        controller.assets.random_line = lambda action_name: "最喜欢shouting了"
+
+        controller.set_contract_name("小明")
+
+        self.assertEqual(controller.next_line(now=10.0), "最喜欢小明了")
+
 
 if __name__ == "__main__":
     unittest.main()

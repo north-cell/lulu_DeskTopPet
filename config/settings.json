@@ -7,5 +7,6 @@
   "speech_interval_seconds": 45,
   "edge_snap": true,
   "autostart": true,
-  "motion_speed_percent": 100
+  "motion_speed_percent": 100,
+  "contract_name": "cool"
 }
