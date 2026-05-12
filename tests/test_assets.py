@@ -126,6 +126,20 @@ class AssetManagerTests(unittest.TestCase):
         self.assertTrue(any("最喜欢" in line for line in lines))
         self.assertTrue(any("辛苦" in line for line in lines))
 
+    def test_packaged_manifest_has_richer_playful_shouting_lines(self):
+        manager = AssetManager(resource_path("assets", "manifest.json"))
+        lines = [
+            line
+            for name in manager.action_names
+            for line in manager.get_action(name).lines
+            if "shouting" in line
+        ]
+
+        self.assertGreaterEqual(len(lines), 42)
+        self.assertTrue(any("本噜噜大王" in line for line in lines))
+        self.assertTrue(any("贴贴" in line for line in lines))
+        self.assertTrue(any("偷偷" in line for line in lines))
+
 
 if __name__ == "__main__":
     unittest.main()

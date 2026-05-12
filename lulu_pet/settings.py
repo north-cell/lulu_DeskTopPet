@@ -14,6 +14,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "edge_snap": True,
     "autostart": False,
     "motion_speed_percent": 100,
+    "contract_name": "shouting",
 }
 
 
@@ -46,6 +47,7 @@ class SettingsStore:
                 40,
                 220,
             ),
+            contract_name=_contract_name(data.get("contract_name")),
         )
 
     def save(self, settings: PetSettings) -> None:
@@ -57,6 +59,7 @@ class SettingsStore:
             "edge_snap": settings.edge_snap,
             "autostart": settings.autostart,
             "motion_speed_percent": settings.motion_speed_percent,
+            "contract_name": settings.contract_name,
         }
         self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -80,3 +83,10 @@ def _positive_int(value: Any, fallback: int) -> int:
 def _bounded_int(value: Any, fallback: int, minimum: int, maximum: int) -> int:
     number = _positive_int(value, fallback)
     return max(minimum, min(maximum, number))
+
+
+def _contract_name(value: Any) -> str:
+    if not isinstance(value, str):
+        return str(DEFAULT_SETTINGS["contract_name"])
+    name = value.strip()
+    return name[:12] if name else str(DEFAULT_SETTINGS["contract_name"])

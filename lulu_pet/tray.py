@@ -63,6 +63,7 @@ class TrayController:
         self._add_autostart_action(menu)
         menu.addSeparator()
         menu.addAction("休息一下", self.pet_window.trigger_rest)
+        menu.addAction("签订契约", self.pet_window.sign_contract)
         self.pet_window.add_character_change_menu(menu)
         menu.addSeparator()
         menu.addAction("退出", QApplication.instance().quit)

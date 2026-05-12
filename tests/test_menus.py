@@ -8,10 +8,12 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 from lulu_pet.assets import AssetManager
+from lulu_pet.contract_dialog import ContractDialog
 from lulu_pet.controller import PetController
 from lulu_pet.focus_records import FocusRecord, FocusRecordStore
 from lulu_pet.models import PetSettings
 from lulu_pet.motion import MotionMode
+import lulu_pet.pet_window as pet_window_module
 from lulu_pet.pet_window import PetWindow
 from lulu_pet.tray import TrayController, _tray_icon
 
@@ -67,6 +69,7 @@ class MenuTests(unittest.TestCase):
                 self.assertNotIn("设置", texts)
                 self.assertIn("专注模式", texts)
                 self.assertIn("休息一下", texts)
+                self.assertIn("签订契约", texts)
                 self.assertIn("暂停移动", texts)
                 self.assertIn("保持置顶", texts)
                 self.assertIn("退出", texts)
@@ -100,6 +103,7 @@ class MenuTests(unittest.TestCase):
             texts = action_texts(window.context_menu())
 
             self.assertEqual(texts, ["结束专注模式", "学习记录", "退出"])
+            self.assertNotIn("签订契约", texts)
         finally:
             window.close()
 
@@ -157,6 +161,59 @@ class MenuTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_sign_contract_saves_name_and_updates_controller(self):
+        class FakeSettingsStore:
+            def __init__(self):
+                self.saved = []
+
+            def save(self, settings):
+                self.saved.append(settings)
+
+        class FakeBubble:
+            def __init__(self):
+                self.messages = []
+
+            def show_message(self, message, anchor, duration_ms=None):
+                self.messages.append(message)
+
+            def hide(self):
+                pass
+
+            def close(self):
+                pass
+
+        original_get_contract_name = pet_window_module.ContractDialog.get_contract_name
+        pet_window_module.ContractDialog.get_contract_name = staticmethod(lambda *args, **kwargs: ("  小露露  ", True))
+        store = FakeSettingsStore()
+        window = PetWindow(PetController(AssetManager(None)), default_settings(), settings_store=store)
+        bubble = FakeBubble()
+        window._bubble = bubble
+        try:
+            window.sign_contract()
+
+            self.assertEqual(window.settings.contract_name, "小露露")
+            self.assertEqual(window.controller.contract_name, "小露露")
+            self.assertEqual(store.saved[-1].contract_name, "小露露")
+            self.assertEqual(bubble.messages, ["契约签订成功，噜噜以后会这样叫你。"])
+        finally:
+            pet_window_module.ContractDialog.get_contract_name = original_get_contract_name
+            window.close()
+
+    def test_contract_dialog_uses_lulu_visual_style(self):
+        dialog = ContractDialog("shouting")
+        try:
+            style = dialog.styleSheet()
+
+            self.assertEqual(dialog.windowTitle(), "签订契约")
+            self.assertEqual(dialog.name_edit.maxLength(), 12)
+            self.assertIn("#FFF4DA", style)
+            self.assertIn("#7B4D32", style)
+            self.assertIn("border-radius: 10px", style)
+            self.assertIn("QPushButton#primaryButton", style)
+            self.assertEqual(dialog.name_edit.text(), "shouting")
+        finally:
+            dialog.close()
+
     def test_paused_motion_does_not_move_on_tick(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         try:
@@ -183,6 +240,7 @@ class MenuTests(unittest.TestCase):
             self.assertIn("显示/隐藏", texts)
             self.assertIn("专注模式", texts)
             self.assertIn("休息一下", texts)
+            self.assertIn("签订契约", texts)
             self.assertIn("暂停移动", texts)
             self.assertIn("保持置顶", texts)
             self.assertIn("退出", texts)
@@ -289,6 +347,7 @@ class MenuTests(unittest.TestCase):
             self.assertIn("退出", texts)
             self.assertNotIn("专注模式", texts)
             self.assertNotIn("休息一下", texts)
+            self.assertNotIn("签订契约", texts)
             self.assertNotIn("暂停移动", texts)
             self.assertNotIn("保持置顶", texts)
         finally:
