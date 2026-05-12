@@ -55,10 +55,22 @@ class MenuTests(unittest.TestCase):
             self.assertNotIn("随机运动", texts)
             self.assertNotIn("随机表情包", texts)
             self.assertNotIn("设置", texts)
+            self.assertIn("专注模式", texts)
             self.assertIn("休息一下", texts)
             self.assertIn("暂停移动", texts)
             self.assertIn("保持置顶", texts)
             self.assertIn("退出", texts)
+        finally:
+            window.close()
+
+    def test_pet_context_menu_in_focus_mode_only_keeps_end_focus_and_exit(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            window.trigger_focus_mode()
+
+            texts = action_texts(window.context_menu())
+
+            self.assertEqual(texts, ["结束专注模式", "退出"])
         finally:
             window.close()
 
@@ -132,10 +144,31 @@ class MenuTests(unittest.TestCase):
             self.assertNotIn("随机表情包", texts)
             self.assertNotIn("设置", texts)
             self.assertIn("显示/隐藏", texts)
+            self.assertIn("专注模式", texts)
             self.assertIn("休息一下", texts)
             self.assertIn("暂停移动", texts)
             self.assertIn("保持置顶", texts)
             self.assertIn("退出", texts)
+        finally:
+            tray.hide()
+            window.close()
+
+    def test_tray_menu_switches_to_end_focus_action_in_focus_mode(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        tray = TrayController(window)
+        try:
+            window.trigger_focus_mode()
+            tray.refresh_menu()
+
+            texts = action_texts(tray.tray.contextMenu())
+
+            self.assertIn("显示/隐藏", texts)
+            self.assertIn("结束专注模式", texts)
+            self.assertIn("退出", texts)
+            self.assertNotIn("专注模式", texts)
+            self.assertNotIn("休息一下", texts)
+            self.assertNotIn("暂停移动", texts)
+            self.assertNotIn("保持置顶", texts)
         finally:
             tray.hide()
             window.close()
