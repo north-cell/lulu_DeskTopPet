@@ -11,7 +11,7 @@
 推荐普通用户使用打包版，不需要安装 Python。
 
 1. 打开项目的 GitHub Releases 页面。
-2. 下载最新版本里的 `LuluDesktopPet.zip` 或 `LuluDesktopPet.rar`。
+2. 下载最新版本里的 `LuluDesktopPet.rar`。
 3. 解压整个压缩包。
 4. 进入解压后的 `LuluDesktopPet/` 文件夹。
 5. 双击运行 `LuluDesktopPet.exe`。

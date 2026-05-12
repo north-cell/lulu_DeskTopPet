@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+from .autostart import AutostartManager
 from .menu_style import apply_lulu_menu_style
 from .pet_window import PetWindow
 
 
 class TrayController:
-    def __init__(self, pet_window: PetWindow):
+    def __init__(self, pet_window: PetWindow, autostart_manager: AutostartManager | None = None):
         self.pet_window = pet_window
+        self.autostart_manager = autostart_manager or AutostartManager()
+        if self.pet_window.settings.autostart and getattr(self.autostart_manager, "is_available", True):
+            self.autostart_manager.enable()
         self.tray = QSystemTrayIcon(_tray_icon(), pet_window)
         self.tray.setToolTip("水豚噜噜")
         self.tray.setContextMenu(self._build_menu())
@@ -38,6 +44,7 @@ class TrayController:
         if self.pet_window.focus_mode_active:
             menu.addAction("结束专注模式", self._end_focus_mode)
             menu.addAction("学习记录", self.pet_window.show_focus_records)
+            self._add_autostart_action(menu)
             menu.addSeparator()
             menu.addAction("退出", QApplication.instance().quit)
             return
@@ -53,6 +60,7 @@ class TrayController:
         top_action.setChecked(self.pet_window.settings.always_on_top)
         top_action.triggered.connect(self.pet_window.set_always_on_top)
         menu.addAction(top_action)
+        self._add_autostart_action(menu)
         menu.addSeparator()
         menu.addAction("休息一下", self.pet_window.trigger_rest)
         self.pet_window.add_character_change_menu(menu)
@@ -65,6 +73,26 @@ class TrayController:
 
     def _end_focus_mode(self) -> None:
         self.pet_window.end_focus_mode()
+        self.refresh_menu()
+
+    def _autostart_checked(self) -> bool:
+        if getattr(self.autostart_manager, "is_available", True):
+            return self.autostart_manager.is_enabled()
+        return self.pet_window.settings.autostart
+
+    def _add_autostart_action(self, menu: QMenu) -> QAction:
+        autostart_action = QAction("开机自启动", menu)
+        autostart_action.setCheckable(True)
+        autostart_action.setChecked(self._autostart_checked())
+        autostart_action.triggered.connect(self._set_autostart_enabled)
+        menu.addAction(autostart_action)
+        return autostart_action
+
+    def _set_autostart_enabled(self, enabled: bool) -> None:
+        self.autostart_manager.set_enabled(enabled)
+        self.pet_window.settings = replace(self.pet_window.settings, autostart=enabled)
+        if self.pet_window.settings_store:
+            self.pet_window.settings_store.save(self.pet_window.settings)
         self.refresh_menu()
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:

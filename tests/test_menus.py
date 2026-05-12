@@ -193,6 +193,86 @@ class MenuTests(unittest.TestCase):
             tray.hide()
             window.close()
 
+    def test_tray_menu_can_toggle_autostart_and_save_settings(self):
+        class FakeAutostartManager:
+            def __init__(self):
+                self.enabled = False
+                self.calls = []
+
+            def is_enabled(self):
+                return self.enabled
+
+            def set_enabled(self, enabled):
+                self.enabled = enabled
+                self.calls.append(enabled)
+
+        class FakeSettingsStore:
+            def __init__(self):
+                self.saved = []
+
+            def save(self, settings):
+                self.saved.append(settings)
+
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        window.settings_store = FakeSettingsStore()
+        autostart = FakeAutostartManager()
+        tray = TrayController(window, autostart_manager=autostart)
+        try:
+            action = action_by_text(tray.tray.contextMenu(), "开机自启动")
+
+            self.assertTrue(action.isCheckable())
+            self.assertFalse(action.isChecked())
+
+            action.trigger()
+
+            self.assertEqual(autostart.calls, [True])
+            self.assertTrue(window.settings.autostart)
+            self.assertTrue(window.settings_store.saved[-1].autostart)
+
+            action = action_by_text(tray.tray.contextMenu(), "开机自启动")
+            action.trigger()
+
+            self.assertEqual(autostart.calls, [True, False])
+            self.assertFalse(window.settings.autostart)
+            self.assertFalse(window.settings_store.saved[-1].autostart)
+        finally:
+            tray.hide()
+            window.close()
+
+    def test_tray_rewrites_autostart_command_when_setting_is_enabled(self):
+        class FakeAutostartManager:
+            is_available = True
+
+            def __init__(self):
+                self.enabled = True
+                self.enable_calls = 0
+
+            def enable(self):
+                self.enable_calls += 1
+
+            def is_enabled(self):
+                return self.enabled
+
+            def set_enabled(self, enabled):
+                self.enabled = enabled
+
+        settings = PetSettings(
+            window_size=(220, 180),
+            always_on_top=True,
+            speech_interval_seconds=45,
+            edge_snap=True,
+            autostart=True,
+            motion_speed_percent=100,
+        )
+        window = PetWindow(PetController(AssetManager(None)), settings)
+        autostart = FakeAutostartManager()
+        tray = TrayController(window, autostart_manager=autostart)
+        try:
+            self.assertEqual(autostart.enable_calls, 1)
+        finally:
+            tray.hide()
+            window.close()
+
     def test_tray_menu_switches_to_end_focus_action_in_focus_mode(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         tray = TrayController(window)
@@ -205,6 +285,7 @@ class MenuTests(unittest.TestCase):
             self.assertIn("显示/隐藏", texts)
             self.assertIn("结束专注模式", texts)
             self.assertIn("学习记录", texts)
+            self.assertIn("开机自启动", texts)
             self.assertIn("退出", texts)
             self.assertNotIn("专注模式", texts)
             self.assertNotIn("休息一下", texts)
