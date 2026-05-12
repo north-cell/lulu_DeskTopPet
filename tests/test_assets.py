@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from lulu_pet.assets import AssetManager
+from lulu_pet.paths import resource_path
 
 
 class AssetManagerTests(unittest.TestCase):
@@ -111,6 +112,19 @@ class AssetManagerTests(unittest.TestCase):
             paths = {manager.random_file_path() for _ in range(80)}
 
             self.assertEqual(paths, {root / "a.gif", root / "b.gif", root / "c.gif"})
+
+    def test_packaged_manifest_has_many_shouting_lines(self):
+        manager = AssetManager(resource_path("assets", "manifest.json"))
+        lines = [
+            line
+            for name in manager.action_names
+            for line in manager.get_action(name).lines
+            if "shouting" in line
+        ]
+
+        self.assertGreaterEqual(len(lines), 18)
+        self.assertTrue(any("最喜欢" in line for line in lines))
+        self.assertTrue(any("辛苦" in line for line in lines))
 
 
 if __name__ == "__main__":

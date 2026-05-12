@@ -24,6 +24,12 @@ class TrayController:
     def _build_menu(self) -> QMenu:
         menu = QMenu()
         menu.addAction("显示/隐藏", self.pet_window.toggle_visible)
+        pause_action = QAction("暂停移动", menu)
+        pause_action.setCheckable(True)
+        pause_action.setChecked(self.pet_window.motion_paused)
+        pause_action.triggered.connect(self.pet_window.set_motion_paused)
+        menu.aboutToShow.connect(lambda: pause_action.setChecked(self.pet_window.motion_paused))
+        menu.addAction(pause_action)
         top_action = QAction("保持置顶", menu)
         top_action.setCheckable(True)
         top_action.setChecked(self.pet_window.settings.always_on_top)

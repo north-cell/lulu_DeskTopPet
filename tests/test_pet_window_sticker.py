@@ -26,6 +26,17 @@ class FakeMouseEvent:
         self.accepted = True
 
 
+class FakeBubble:
+    def __init__(self):
+        self.messages = []
+
+    def show_message(self, text, anchor, duration_ms=2600):
+        self.messages.append(text)
+
+    def hide(self):
+        pass
+
+
 def double_click_event() -> QMouseEvent:
     point = QPointF(20, 20)
     return QMouseEvent(
@@ -150,6 +161,27 @@ class PetWindowStickerTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_single_click_does_not_show_bubble(self):
+        settings = PetSettings(
+            window_size=(220, 180),
+            always_on_top=True,
+            speech_interval_seconds=45,
+            edge_snap=True,
+            autostart=False,
+            motion_speed_percent=100,
+        )
+        window = PetWindow(PetController(AssetManager(None)), settings)
+        event = FakeMouseEvent(Qt.LeftButton)
+        bubble = FakeBubble()
+        window._bubble = bubble
+        try:
+            window.mouseReleaseEvent(event)
+
+            self.assertTrue(event.accepted)
+            self.assertEqual(bubble.messages, [])
+        finally:
+            window.close()
+
     def test_double_click_triggers_sticker(self):
         settings = PetSettings(
             window_size=(220, 180),
@@ -166,6 +198,28 @@ class PetWindowStickerTests(unittest.TestCase):
 
             self.assertTrue(event.isAccepted())
             self.assertTrue(window._sticker_active)
+        finally:
+            window.close()
+
+    def test_double_click_shows_bubble(self):
+        settings = PetSettings(
+            window_size=(220, 180),
+            always_on_top=True,
+            speech_interval_seconds=45,
+            edge_snap=True,
+            autostart=False,
+            motion_speed_percent=100,
+        )
+        window = PetWindow(PetController(AssetManager(None)), settings)
+        event = double_click_event()
+        bubble = FakeBubble()
+        window._bubble = bubble
+        try:
+            window.mouseDoubleClickEvent(event)
+
+            self.assertTrue(event.isAccepted())
+            self.assertEqual(len(bubble.messages), 1)
+            self.assertTrue(bubble.messages[0])
         finally:
             window.close()
 
