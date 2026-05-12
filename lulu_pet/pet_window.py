@@ -31,6 +31,7 @@ LOW_QUALITY_STICKER_GIFS = {
 STICKER_PLAYBACK_SPEED_PERCENT = 75
 DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
+LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
 
 
 class PetWindow(QWidget):
@@ -64,8 +65,10 @@ class PetWindow(QWidget):
         self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
         self._default_character_asset = resource_path("assets", "lulu_transparent_gifs", DEFAULT_CHARACTER_GIF)
         self._swimming_character_asset = resource_path("assets", "lulu_transparent_gifs", SWIMMING_CHARACTER_GIF)
+        self._lifted_character_asset = resource_path("assets", "lulu_transparent_gifs", LIFTED_CHARACTER_GIF)
         self._character_assets = {
             "body": self._default_character_asset,
+            "lifted": self._lifted_character_asset,
             "rest": self._rest_character_asset,
         }
 
@@ -335,6 +338,8 @@ class PetWindow(QWidget):
         self._load_character(self._character_assets[key])
 
     def _character_key_for_mode(self, mode: MotionMode) -> str:
+        if mode in (MotionMode.DRAGGED, MotionMode.FALLING):
+            return "lifted"
         return "body"
 
     def _load_character(self, path: Path) -> None:
