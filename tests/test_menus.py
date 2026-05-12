@@ -311,6 +311,39 @@ class MenuTests(unittest.TestCase):
             tray.hide()
             window.close()
 
+    def test_tray_menu_can_toggle_always_on_top_and_save_settings(self):
+        class FakeSettingsStore:
+            def __init__(self):
+                self.saved = []
+
+            def save(self, settings):
+                self.saved.append(settings)
+
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        window.settings_store = FakeSettingsStore()
+        tray = TrayController(window)
+        try:
+            action = action_by_text(tray.tray.contextMenu(), "保持置顶")
+
+            self.assertTrue(action.isCheckable())
+            self.assertTrue(action.isChecked())
+
+            action.trigger()
+
+            self.assertFalse(window.settings.always_on_top)
+            self.assertFalse(window.settings_store.saved[-1].always_on_top)
+            self.assertFalse(action_by_text(tray.tray.contextMenu(), "保持置顶").isChecked())
+
+            action = action_by_text(tray.tray.contextMenu(), "保持置顶")
+            action.trigger()
+
+            self.assertTrue(window.settings.always_on_top)
+            self.assertTrue(window.settings_store.saved[-1].always_on_top)
+            self.assertTrue(action_by_text(tray.tray.contextMenu(), "保持置顶").isChecked())
+        finally:
+            tray.hide()
+            window.close()
+
     def test_tray_menu_and_submenu_use_lulu_style(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         tray = TrayController(window)

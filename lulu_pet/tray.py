@@ -58,7 +58,7 @@ class TrayController:
         top_action = QAction("保持置顶", menu)
         top_action.setCheckable(True)
         top_action.setChecked(self.pet_window.settings.always_on_top)
-        top_action.triggered.connect(self.pet_window.set_always_on_top)
+        top_action.triggered.connect(self._set_always_on_top)
         menu.addAction(top_action)
         self._add_autostart_action(menu)
         menu.addSeparator()
@@ -73,6 +73,10 @@ class TrayController:
 
     def _end_focus_mode(self) -> None:
         self.pet_window.end_focus_mode()
+        self.refresh_menu()
+
+    def _set_always_on_top(self, enabled: bool) -> None:
+        self.pet_window.set_always_on_top(enabled)
         self.refresh_menu()
 
     def _autostart_checked(self) -> bool:

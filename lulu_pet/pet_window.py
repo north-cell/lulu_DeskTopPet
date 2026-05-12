@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import random
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -125,8 +126,11 @@ class PetWindow(QWidget):
         self._speech_timer.timeout.connect(self._say_random_line)
         self._speech_timer.start(5000)
 
-    def set_always_on_top(self, enabled: bool) -> None:
+    def set_always_on_top(self, enabled: bool, *, save_settings: bool = True) -> None:
         self._always_on_top = enabled
+        self.settings = replace(self.settings, always_on_top=enabled)
+        if save_settings and self.settings_store:
+            self.settings_store.save(self.settings)
         visible = self.isVisible()
         self.setWindowFlags(self._window_flags())
         if visible:
@@ -224,7 +228,7 @@ class PetWindow(QWidget):
         self.settings = dialog.to_settings(self.settings)
         self.controller.speech_interval_seconds = self.settings.speech_interval_seconds
         self.motion.speed_scale = self.settings.motion_speed_percent / 100
-        self.set_always_on_top(self.settings.always_on_top)
+        self.set_always_on_top(self.settings.always_on_top, save_settings=False)
         if self.settings_store:
             self.settings_store.save(self.settings)
 
