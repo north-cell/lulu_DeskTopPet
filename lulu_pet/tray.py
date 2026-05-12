@@ -22,14 +22,29 @@ class TrayController:
     def hide(self) -> None:
         self.tray.hide()
 
+    def refresh_menu(self) -> None:
+        self.tray.setContextMenu(self._build_menu())
+
     def _build_menu(self) -> QMenu:
         menu = apply_lulu_menu_style(QMenu())
+        self._populate_menu(menu)
+        menu.aboutToShow.connect(lambda: self._populate_menu(menu))
+        return menu
+
+    def _populate_menu(self, menu: QMenu) -> None:
+        menu.clear()
         menu.addAction("显示/隐藏", self.pet_window.toggle_visible)
+        if self.pet_window.focus_mode_active:
+            menu.addAction("结束专注模式", self._end_focus_mode)
+            menu.addSeparator()
+            menu.addAction("退出", QApplication.instance().quit)
+            return
+
+        menu.addAction("专注模式", self._trigger_focus_mode)
         pause_action = QAction("暂停移动", menu)
         pause_action.setCheckable(True)
         pause_action.setChecked(self.pet_window.motion_paused)
         pause_action.triggered.connect(self.pet_window.set_motion_paused)
-        menu.aboutToShow.connect(lambda: pause_action.setChecked(self.pet_window.motion_paused))
         menu.addAction(pause_action)
         top_action = QAction("保持置顶", menu)
         top_action.setCheckable(True)
@@ -41,7 +56,14 @@ class TrayController:
         self.pet_window.add_character_change_menu(menu)
         menu.addSeparator()
         menu.addAction("退出", QApplication.instance().quit)
-        return menu
+
+    def _trigger_focus_mode(self) -> None:
+        self.pet_window.trigger_focus_mode()
+        self.refresh_menu()
+
+    def _end_focus_mode(self) -> None:
+        self.pet_window.end_focus_mode()
+        self.refresh_menu()
 
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.Trigger:

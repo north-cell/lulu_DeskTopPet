@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 from .bubble import BubbleWidget
 from .controller import PetController
+from .focus_timer import FocusTimerWidget
 from .interaction import DragIntentTracker
 from .menu_style import apply_lulu_menu_style
 from .models import PetSettings
@@ -33,6 +34,8 @@ STICKER_PLAYBACK_SPEED_PERCENT = 75
 DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
+FOCUS_STAGE_SECONDS = 5 * 60
+FOCUS_STICKER_DURATION_MS = 2600
 
 
 class PetWindow(QWidget):
@@ -55,13 +58,20 @@ class PetWindow(QWidget):
         self._sticker_pixmap = QPixmap()
         self._sticker_active = False
         self._last_sticker_path: Path | None = None
+        self._sticker_play_once = False
         self._next_sticker_index = 0
         self._resting = False
         self._motion_paused = False
+        self._focus_active = False
+        self._focus_started_at = 0.0
+        self._focus_stage_index = -1
+        self._focus_character_asset: Path | None = None
         self._sticker_timer = QTimer(self)
         self._sticker_timer.setSingleShot(True)
         self._sticker_timer.timeout.connect(self._clear_sticker)
         self._sticker_assets = self._load_sticker_assets()
+        self._focus_timer = FocusTimerWidget()
+        self._focus_timer.finished_requested.connect(self.end_focus_mode)
         self._character_key = ""
         self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
         self._default_character_asset = resource_path("assets", "lulu_transparent_gifs", DEFAULT_CHARACTER_GIF)
@@ -72,6 +82,11 @@ class PetWindow(QWidget):
             "lifted": self._lifted_character_asset,
             "rest": self._rest_character_asset,
         }
+        self._focus_assets = [
+            resource_path("assets", "lulu_FocusMode", f"{index}.gif")
+            for index in range(1, 6)
+        ]
+        self._focus_finish_asset = resource_path("assets", "lulu_FocusMode", "6.gif")
 
         self.setWindowTitle("水豚噜噜")
         self.setAutoFillBackground(False)
@@ -111,6 +126,10 @@ class PetWindow(QWidget):
     def motion_paused(self) -> bool:
         return self._motion_paused
 
+    @property
+    def focus_mode_active(self) -> bool:
+        return self._focus_active
+
     def set_motion_paused(self, paused: bool) -> None:
         self._motion_paused = paused
 
@@ -124,8 +143,53 @@ class PetWindow(QWidget):
         self._bubble.show_message("噜噜提醒你休息一下。", self)
 
     def trigger_sticker(self) -> None:
+        if self._focus_active:
+            return
         source = self._next_sticker_asset() if self._sticker_assets else self.controller.assets.random_file_path()
         self._load_sticker(source or self._character_assets["body"])
+
+    def trigger_focus_mode(self) -> None:
+        if self._focus_active:
+            return
+        self._focus_active = True
+        self._focus_started_at = time.monotonic()
+        self._focus_stage_index = -1
+        self._resting = False
+        self._dragging = False
+        self._drag_intent.release()
+        self._bubble.hide()
+        self._clear_sticker()
+        self.motion.start(MotionMode.IDLE, duration_ticks=999999)
+        self.motion.x = self.motion.bounds.right - self.width()
+        self.motion.y = self.motion.bounds.bottom - self.height()
+        self._motion_frame = MotionFrame(
+            MotionMode.IDLE,
+            int(self.motion.x),
+            int(self.motion.y),
+            self.motion.frame_index,
+            self.motion.facing,
+        )
+        self.move(self._motion_frame.x, self._motion_frame.y)
+        self._update_focus_stage()
+        self._focus_timer.show_for(self, 0)
+        self.update()
+
+    def end_focus_mode(self) -> None:
+        if not self._focus_active:
+            return
+        focused_seconds = self._focus_elapsed_seconds()
+        self._focus_active = False
+        self._focus_timer.hide()
+        self._focus_stage_index = -1
+        self._focus_character_asset = None
+        self._character_key = ""
+        self._apply_character_for_mode(self.motion.mode)
+        self._load_sticker(self._focus_finish_asset, duration_ms=FOCUS_STICKER_DURATION_MS, play_once=True)
+        self._bubble.show_message(
+            f"谢谢你陪本噜噜大王学习 {self._format_focus_duration(focused_seconds)}",
+            self,
+            duration_ms=FOCUS_STICKER_DURATION_MS,
+        )
 
     def show_swimming_character(self) -> None:
         self._set_body_character(self._swimming_character_asset)
@@ -149,6 +213,13 @@ class PetWindow(QWidget):
 
     def context_menu(self) -> QMenu:
         menu = apply_lulu_menu_style(QMenu(self))
+        if self._focus_active:
+            menu.addAction("结束专注模式", self.end_focus_mode)
+            menu.addSeparator()
+            menu.addAction("退出", QApplication.instance().quit)
+            return menu
+
+        menu.addAction("专注模式", self.trigger_focus_mode)
         menu.addAction("休息一下", self.trigger_rest)
         self.add_character_change_menu(menu)
         menu.addSeparator()
@@ -192,6 +263,9 @@ class PetWindow(QWidget):
             event.accept()
 
     def mouseMoveEvent(self, event):  # noqa: N802 - Qt override
+        if self._focus_active:
+            event.accept()
+            return
         if self._dragging and event.buttons() & Qt.LeftButton:
             self._move_drag(event.globalPosition().toPoint())
         elif event.buttons() & Qt.LeftButton:
@@ -205,6 +279,11 @@ class PetWindow(QWidget):
         event.accept()
 
     def mouseReleaseEvent(self, event):  # noqa: N802 - Qt override
+        if self._focus_active and event.button() == Qt.LeftButton:
+            self._drag_intent.release()
+            self._dragging = False
+            event.accept()
+            return
         if event.button() == Qt.LeftButton and self._dragging:
             self._drag_intent.release()
             self._dragging = False
@@ -218,6 +297,9 @@ class PetWindow(QWidget):
 
     def mouseDoubleClickEvent(self, event):  # noqa: N802 - Qt override
         if event.button() == Qt.LeftButton:
+            if self._focus_active:
+                event.accept()
+                return
             self.controller.handle_click()
             self.trigger_sticker()
             self._say_random_line(force=True)
@@ -243,6 +325,7 @@ class PetWindow(QWidget):
         self._bubble.hide()
         self._sticker.hide()
         self._clear_sticker()
+        self._focus_timer.hide()
         event.accept()
 
     def showEvent(self, event):  # noqa: N802 - Qt override
@@ -259,6 +342,11 @@ class PetWindow(QWidget):
         remove_windows_frame_artifacts(int(self.winId()))
 
     def _on_tick(self) -> None:
+        if self._focus_active:
+            self._update_focus_stage()
+            self._focus_timer.set_elapsed(self._focus_elapsed_seconds())
+            self.update()
+            return
         if self._sticker_active:
             if self._sticker_movie:
                 self._sticker_movie.jumpToNextFrame()
@@ -373,9 +461,10 @@ class PetWindow(QWidget):
             self._apply_alpha_mask(self._pixmap)
         self.update()
 
-    def _load_sticker(self, path: Path) -> None:
+    def _load_sticker(self, path: Path, duration_ms: int = 2600, play_once: bool = False) -> None:
         self._clear_sticker()
         self._last_sticker_path = path
+        self._sticker_play_once = play_once
         movie = QMovie(str(path))
         if movie.isValid():
             movie.setCacheMode(QMovie.CacheAll)
@@ -391,7 +480,7 @@ class PetWindow(QWidget):
                 self._sticker_pixmap = pixmap
                 self._sticker_active = True
         if self._sticker_active:
-            self._sticker_timer.start(2600)
+            self._sticker_timer.start(duration_ms)
             self.update()
 
     def _next_sticker_asset(self) -> Path:
@@ -435,6 +524,8 @@ class PetWindow(QWidget):
     def _set_sticker_frame(self, movie: QMovie) -> None:
         self._sticker_pixmap = movie.currentPixmap()
         self._apply_alpha_mask(self._sticker_pixmap)
+        if self._sticker_play_once and movie.frameCount() > 0 and movie.currentFrameNumber() >= movie.frameCount() - 1:
+            self._sticker_timer.start(max(1, movie.nextFrameDelay()))
         self.update()
 
     def _clear_sticker(self) -> None:
@@ -443,6 +534,7 @@ class PetWindow(QWidget):
         self._sticker_movie = None
         self._sticker_pixmap = QPixmap()
         self._sticker_active = False
+        self._sticker_play_once = False
         if not self._pixmap.isNull():
             self._apply_alpha_mask(self._pixmap)
         self.update()
@@ -458,6 +550,27 @@ class PetWindow(QWidget):
         mask_painter.drawPixmap(target, pixmap.mask())
         mask_painter.end()
         self.setMask(QBitmap.fromImage(mask_image))
+
+    def _focus_elapsed_seconds(self) -> int:
+        if not self._focus_active:
+            return 0
+        return max(0, int(time.monotonic() - self._focus_started_at))
+
+    def _update_focus_stage(self) -> None:
+        stage_index = min(self._focus_elapsed_seconds() // FOCUS_STAGE_SECONDS, len(self._focus_assets) - 1)
+        if stage_index == self._focus_stage_index:
+            return
+        self._focus_stage_index = stage_index
+        self._focus_character_asset = self._focus_assets[stage_index]
+        self._character_key = f"focus:{stage_index}"
+        self._load_character(self._focus_character_asset)
+
+    def _format_focus_duration(self, seconds: int) -> str:
+        hours, remainder = divmod(max(0, int(seconds)), 3600)
+        minutes, secs = divmod(remainder, 60)
+        if hours:
+            return f"{hours}小时{minutes:02d}分{secs:02d}秒"
+        return f"{minutes}分{secs:02d}秒"
 
     def _desktop_bounds(self) -> DesktopBounds:
         screen = self.screen().availableGeometry() if self.screen() else None
