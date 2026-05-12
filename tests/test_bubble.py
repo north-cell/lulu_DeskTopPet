@@ -3,7 +3,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QApplication
 
 from lulu_pet.bubble import BubbleWidget
@@ -45,6 +45,18 @@ class BubbleWidgetTests(unittest.TestCase):
         finally:
             bubble.close()
             anchor.close()
+
+    def test_bubble_tail_connects_to_body_without_center_gap(self):
+        bubble = BubbleWidget()
+        try:
+            bubble.resize(240, 92)
+            body = bubble._body_rect()
+            path = bubble._bubble_path(body)
+            tail_join = QPointF(body.center().x(), body.bottom() + 1)
+
+            self.assertTrue(path.contains(tail_join))
+        finally:
+            bubble.close()
 
 
 if __name__ == "__main__":

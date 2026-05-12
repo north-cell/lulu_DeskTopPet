@@ -91,10 +91,15 @@ class BubbleWidget(QWidget):
         return self.rect().adjusted(1, 1, -1, -9)
 
     def _bubble_path(self, body: QRect) -> QPainterPath:
-        path = QPainterPath()
-        path.addRoundedRect(body, 17, 17)
+        body_path = QPainterPath()
+        body_path.addRoundedRect(body, 17, 17)
+
         tail_x = body.center().x()
         tail_y = body.bottom()
-        path.moveTo(tail_x - 12, tail_y - 1)
-        path.cubicTo(tail_x - 5, tail_y + 5, tail_x + 1, tail_y + 8, tail_x + 10, tail_y - 1)
-        return path
+        tail_path = QPainterPath()
+        tail_path.moveTo(tail_x - 13, tail_y - 2)
+        tail_path.cubicTo(tail_x - 8, tail_y + 8, tail_x + 7, tail_y + 8, tail_x + 12, tail_y - 2)
+        tail_path.lineTo(tail_x - 13, tail_y - 2)
+        tail_path.closeSubpath()
+
+        return body_path.united(tail_path)
