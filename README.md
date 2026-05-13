@@ -48,7 +48,7 @@ python run_lulu_pet.py
 - 双击：播放一个噜噜动图表情包。
 - 右键：打开菜单，可以进入专注模式、玩小游戏、休息、签订契约、隐藏/显示、暂停移动、保持置顶、退出。
 - 右键 `专注模式`：开始专注或查看学习记录。
-- 右键 `小游戏`：打开“打噜鼠”或“贪吃噜”。
+- 右键 `小游戏`：打开“打噜鼠”、“贪吃噜”、“2048噜”或“Flappy Lulu”。
 - 右键 `签订契约`：输入你希望噜噜称呼你的名字。之后气泡里原本的 `shouting` 会替换成这个称呼。
 - 右键 `更换形象`：在“游泳噜噜”、“睡衣噜噜”和“得瑟噜噜”之间切换。
 - 系统托盘图标：也可以打开显示/隐藏、专注模式、休息、签订契约、暂停移动、置顶、开机自启动、退出等操作。
@@ -75,10 +75,23 @@ python run_lulu_pet.py
 
 ### 小游戏 🕹️
 
-- `打噜鼠`：全屏反应类小游戏，适合短暂放松。
-- `贪吃噜`：全屏贪吃类小游戏。
-- 进入小游戏时，桌宠会临时隐藏并暂停移动；游戏结束后恢复到进入前的显示/隐藏和移动状态。
-- 专注模式期间不会启动小游戏，避免破坏专注状态。
+小游戏统一放在右键菜单和系统托盘菜单的 `小游戏` 子菜单里。进入小游戏时，桌宠会临时隐藏并暂停移动；游戏结束或关闭后，会恢复到进入前的显示/隐藏和移动状态。专注模式期间不会显示小游戏入口，避免破坏专注状态。
+
+当前包含：
+
+- `打噜鼠`：全屏反应类小游戏。噜噜会随机出现在屏幕不同位置，需要在短时间内点击命中；结算页显示命中、漏掉、准确率、最高连击和最高纪录。
+- `贪吃噜`：全屏贪吃蛇玩法。蛇头是噜噜，食物和身体是小桔子；方向键或 WASD 控制移动，吃到小桔子后增长，撞墙或撞到自己后结算。
+- `2048噜`：经典 4×4 2048 玩法。方向键或 WASD 滑动方块，相同数字合并加分；达到 2048 后可继续挑战更高分。
+- `Flappy Lulu`：像素鸟玩法。点击 `START` 后开始，空格或鼠标左键控制像素噜噜上跳，穿过绿色管道得分，碰撞后结算。
+
+小游戏最高纪录保存在独立文件里，不会写入 `settings.json`：
+
+```text
+config/whack_lulu_records.json
+config/greedy_lulu_records.json
+config/lulu_2048_records.json
+config/flappy_lulu_records.json
+```
 
 ## 功能特性 ✨
 
@@ -89,7 +102,7 @@ python run_lulu_pet.py
 - 🍊 专注模式：右下角陪伴、随机间隔专属动画、小橘子正计时、学习记录、结束感谢气泡
 - 💬 气泡台词：支持用 `shouting` 占位符生成专属称呼
 - 💌 签订契约：用户可以在菜单里自定义噜噜对自己的称呼
-- 🕹️ 小游戏：打噜鼠、贪吃噜
+- 🕹️ 小游戏：打噜鼠、贪吃噜、2048噜、Flappy Lulu
 - 📌 右键菜单和系统托盘菜单，支持暂停移动、保持置顶和开机自启动
 - 👕 可切换游泳、睡衣、得瑟三种形象
 - 🍂 暖棕色噜噜风格菜单
@@ -146,11 +159,13 @@ assets/lulu_FocusMode/
 assets/manifest.json
 config/settings.json
 config/focus_records.json
+config/*_records.json
 ```
 
 - `assets/manifest.json` 可配置动作素材和台词。
 - `config/settings.json` 保存窗口大小、置顶、说话间隔、边缘限制、开机自启动、移动速度和契约称呼。
 - `config/focus_records.json` 保存专注模式学习记录。
+- `config/*_records.json` 保存各小游戏最高纪录；这些文件由游戏运行时按需创建。
 
 ### 气泡台词与称呼
 
@@ -210,11 +225,12 @@ pip install -r requirements.txt
 项目结构：
 
 ```text
-lulu_pet/      应用代码
-assets/        桌宠素材和动作配置
-config/        本地设置
-tests/         单元测试
-scripts/       素材处理和辅助脚本
+lulu_pet/        应用代码
+lulu_pet/games/  小游戏窗口与规则逻辑
+assets/          桌宠素材和动作配置
+config/          本地设置和运行时纪录
+tests/           单元测试
+scripts/         素材处理和辅助脚本
 ```
 
 常用入口：
@@ -223,6 +239,26 @@ scripts/       素材处理和辅助脚本
 run_lulu_pet.py       源码运行快捷入口
 lulu_pet/__main__.py  python -m lulu_pet 入口
 lulu-pet.spec         PyInstaller 打包配置
+```
+
+### 新增小游戏
+
+小游戏采用独立窗口模式，便于后续扩展：
+
+1. 在 `lulu_pet/games/` 新增一个游戏窗口类。
+2. 游戏窗口提供 `finished` signal，关闭时发出，用于恢复桌宠状态。
+3. 如需重新开始，提供 `restart_game()`；如需提前结算，提供 `finish_game()`。
+4. 在 `PetWindow.add_games_menu()` 中注册二级菜单动作。
+5. 在 `PetWindow` 中新增 `start_xxx_game()`，并复用 `_start_game_window(...)` 启动。
+6. 为菜单、规则、纪录保存和桌宠状态恢复补充测试。
+
+已有小游戏可作为参考：
+
+```text
+lulu_pet/games/whack_lulu.py
+lulu_pet/games/greedy_lulu.py
+lulu_pet/games/lulu_2048.py
+lulu_pet/games/flappy_lulu.py
 ```
 
 ## 说明 📌
