@@ -16,6 +16,7 @@ from .controller import PetController
 from .focus_records import FocusRecord, FocusRecordStore
 from .focus_records_dialog import FocusRecordsDialog
 from .focus_timer import FocusTimerWidget
+from .games.greedy_lulu import GreedyLuluWindow
 from .games.whack_lulu import WhackLuluWindow
 from .interaction import DragIntentTracker
 from .menu_style import apply_lulu_menu_style
@@ -41,7 +42,8 @@ DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
 PAJAMA_CHARACTER_GIF = "xhs_lulu_02.gif"
-FOCUS_STAGE_SECONDS = 5 * 60
+FOCUS_MIN_STAGE_MINUTES = 12
+FOCUS_MAX_STAGE_MINUTES = 25
 FOCUS_STICKER_DURATION_MS = 2600
 
 
@@ -80,6 +82,7 @@ class PetWindow(QWidget):
         self._focus_active = False
         self._focus_started_at = 0.0
         self._focus_started_wall_time: datetime | None = None
+        self._focus_stage_seconds = FOCUS_MIN_STAGE_MINUTES * 60
         self._focus_stage_index = -1
         self._focus_character_asset: Path | None = None
         self._sticker_timer = QTimer(self)
@@ -89,7 +92,7 @@ class PetWindow(QWidget):
         self._focus_timer = FocusTimerWidget()
         self._focus_timer.finished_requested.connect(self.end_focus_mode)
         self._focus_records_dialog: FocusRecordsDialog | None = None
-        self._active_game_window: WhackLuluWindow | None = None
+        self._active_game_window: GreedyLuluWindow | WhackLuluWindow | None = None
         self._pre_game_visible = False
         self._pre_game_motion_paused = False
         self._character_key = ""
@@ -178,6 +181,7 @@ class PetWindow(QWidget):
         self._focus_active = True
         self._focus_started_at = time.monotonic()
         self._focus_started_wall_time = datetime.now()
+        self._focus_stage_seconds = random.randint(FOCUS_MIN_STAGE_MINUTES, FOCUS_MAX_STAGE_MINUTES) * 60
         self._focus_stage_index = -1
         self._resting = False
         self._dragging = False
@@ -308,10 +312,17 @@ class PetWindow(QWidget):
     def add_games_menu(self, menu: QMenu) -> QMenu:
         games_menu = apply_lulu_menu_style(QMenu("小游戏", menu))
         games_menu.addAction("打噜鼠", self.start_whack_lulu_game)
+        games_menu.addAction("贪吃噜", self.start_greedy_lulu_game)
         menu.addMenu(games_menu)
         return games_menu
 
     def start_whack_lulu_game(self) -> None:
+        self._start_game_window(WhackLuluWindow)
+
+    def start_greedy_lulu_game(self) -> None:
+        self._start_game_window(GreedyLuluWindow)
+
+    def _start_game_window(self, game_window_class) -> None:
         if self._focus_active:
             return
         if self._active_game_window:
@@ -325,7 +336,7 @@ class PetWindow(QWidget):
         self._clear_sticker()
         self.set_motion_paused(True)
         self.hide()
-        game = WhackLuluWindow()
+        game = game_window_class()
         game.finished.connect(self._restore_after_game)
         self._active_game_window = game
         game.showFullScreen()
@@ -659,7 +670,7 @@ class PetWindow(QWidget):
         return max(0, int(time.monotonic() - self._focus_started_at))
 
     def _update_focus_stage(self) -> None:
-        stage_index = min(self._focus_elapsed_seconds() // FOCUS_STAGE_SECONDS, len(self._focus_assets) - 1)
+        stage_index = min(self._focus_elapsed_seconds() // self._focus_stage_seconds, len(self._focus_assets) - 1)
         if stage_index == self._focus_stage_index:
             return
         self._focus_stage_index = stage_index
