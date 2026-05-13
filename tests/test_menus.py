@@ -78,8 +78,9 @@ class MenuTests(unittest.TestCase):
                 self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
                 self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
                 games_menu = submenu_by_text(menu, "小游戏")
-                self.assertEqual(action_texts(games_menu), ["打噜鼠"])
+                self.assertEqual(action_texts(games_menu), ["打噜鼠", "贪吃噜"])
                 self.assertIsNone(action_by_text(games_menu, "打噜鼠").menu())
+                self.assertIsNone(action_by_text(games_menu, "贪吃噜").menu())
             finally:
                 window.close()
 
@@ -256,8 +257,9 @@ class MenuTests(unittest.TestCase):
             self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
             self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
             games_menu = submenu_by_text(menu, "小游戏")
-            self.assertEqual(action_texts(games_menu), ["打噜鼠"])
+            self.assertEqual(action_texts(games_menu), ["打噜鼠", "贪吃噜"])
             self.assertIsNone(action_by_text(games_menu, "打噜鼠").menu())
+            self.assertIsNone(action_by_text(games_menu, "贪吃噜").menu())
         finally:
             tray.hide()
             window.close()
