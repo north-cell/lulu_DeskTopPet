@@ -16,6 +16,7 @@ from .controller import PetController
 from .focus_records import FocusRecord, FocusRecordStore
 from .focus_records_dialog import FocusRecordsDialog
 from .focus_timer import FocusTimerWidget
+from .games.flappy_lulu import FlappyLuluWindow
 from .games.greedy_lulu import GreedyLuluWindow
 from .games.lulu_2048 import Lulu2048Window
 from .games.whack_lulu import WhackLuluWindow
@@ -93,7 +94,7 @@ class PetWindow(QWidget):
         self._focus_timer = FocusTimerWidget()
         self._focus_timer.finished_requested.connect(self.end_focus_mode)
         self._focus_records_dialog: FocusRecordsDialog | None = None
-        self._active_game_window: GreedyLuluWindow | Lulu2048Window | WhackLuluWindow | None = None
+        self._active_game_window: FlappyLuluWindow | GreedyLuluWindow | Lulu2048Window | WhackLuluWindow | None = None
         self._pre_game_visible = False
         self._pre_game_motion_paused = False
         self._character_key = ""
@@ -315,6 +316,7 @@ class PetWindow(QWidget):
         games_menu.addAction("打噜鼠", self.start_whack_lulu_game)
         games_menu.addAction("贪吃噜", self.start_greedy_lulu_game)
         games_menu.addAction("2048噜", self.start_lulu_2048_game)
+        games_menu.addAction("Flappy Lulu", self.start_flappy_lulu_game)
         menu.addMenu(games_menu)
         return games_menu
 
@@ -326,6 +328,9 @@ class PetWindow(QWidget):
 
     def start_lulu_2048_game(self) -> None:
         self._start_game_window(Lulu2048Window)
+
+    def start_flappy_lulu_game(self) -> None:
+        self._start_game_window(FlappyLuluWindow)
 
     def _start_game_window(self, game_window_class) -> None:
         if self._focus_active:
