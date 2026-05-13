@@ -16,6 +16,7 @@ from .controller import PetController
 from .focus_records import FocusRecord, FocusRecordStore
 from .focus_records_dialog import FocusRecordsDialog
 from .focus_timer import FocusTimerWidget
+from .games.whack_lulu import WhackLuluWindow
 from .interaction import DragIntentTracker
 from .menu_style import apply_lulu_menu_style
 from .models import PetSettings
@@ -88,6 +89,9 @@ class PetWindow(QWidget):
         self._focus_timer = FocusTimerWidget()
         self._focus_timer.finished_requested.connect(self.end_focus_mode)
         self._focus_records_dialog: FocusRecordsDialog | None = None
+        self._active_game_window: WhackLuluWindow | None = None
+        self._pre_game_visible = False
+        self._pre_game_motion_paused = False
         self._character_key = ""
         self._rest_character_asset = resource_path("assets", "lulu_transparent_gifs", "qq_lulu_04.gif")
         self._default_character_asset = resource_path("assets", "lulu_transparent_gifs", DEFAULT_CHARACTER_GIF)
@@ -260,6 +264,7 @@ class PetWindow(QWidget):
             return menu
 
         self.add_focus_mode_menu(menu)
+        self.add_games_menu(menu)
         menu.addAction("休息一下", self.trigger_rest)
         menu.addAction("签订契约", self.sign_contract)
         self.add_character_change_menu(menu)
@@ -299,6 +304,31 @@ class PetWindow(QWidget):
         focus_menu.addAction("学习记录", self.show_focus_records)
         menu.addMenu(focus_menu)
         return focus_menu
+
+    def add_games_menu(self, menu: QMenu) -> QMenu:
+        games_menu = apply_lulu_menu_style(QMenu("小游戏", menu))
+        games_menu.addAction("打噜鼠", self.start_whack_lulu_game)
+        menu.addMenu(games_menu)
+        return games_menu
+
+    def start_whack_lulu_game(self) -> None:
+        if self._focus_active:
+            return
+        if self._active_game_window:
+            self._active_game_window.raise_()
+            self._active_game_window.activateWindow()
+            return
+        self._pre_game_visible = self.isVisible()
+        self._pre_game_motion_paused = self._motion_paused
+        self._bubble.hide()
+        self._sticker.hide()
+        self._clear_sticker()
+        self.set_motion_paused(True)
+        self.hide()
+        game = WhackLuluWindow()
+        game.finished.connect(self._restore_after_game)
+        self._active_game_window = game
+        game.showFullScreen()
 
     def show_focus_records(self) -> None:
         if self._focus_records_dialog:
@@ -658,6 +688,14 @@ class PetWindow(QWidget):
                 duration_text=self._format_focus_duration(focused_seconds),
             )
         )
+
+    def _restore_after_game(self) -> None:
+        self.set_motion_paused(self._pre_game_motion_paused)
+        if self._pre_game_visible:
+            self.show()
+        else:
+            self.hide()
+        self._active_game_window = None
 
     def _desktop_bounds(self) -> DesktopBounds:
         screen = self.screen().availableGeometry() if self.screen() else None
