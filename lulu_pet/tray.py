@@ -50,6 +50,7 @@ class TrayController:
             return
 
         self.pet_window.add_focus_mode_menu(menu, self._trigger_focus_mode)
+        self.pet_window.add_games_menu(menu)
         pause_action = QAction("暂停移动", menu)
         pause_action.setCheckable(True)
         pause_action.setChecked(self.pet_window.motion_paused)

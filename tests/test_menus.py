@@ -70,12 +70,16 @@ class MenuTests(unittest.TestCase):
                 self.assertIn("专注模式", texts)
                 self.assertIn("休息一下", texts)
                 self.assertIn("签订契约", texts)
+                self.assertIn("小游戏", texts)
                 self.assertIn("暂停移动", texts)
                 self.assertIn("保持置顶", texts)
                 self.assertIn("退出", texts)
                 focus_menu = submenu_by_text(menu, "专注模式")
                 self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
                 self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
+                games_menu = submenu_by_text(menu, "小游戏")
+                self.assertEqual(action_texts(games_menu), ["打噜鼠"])
+                self.assertIsNone(action_by_text(games_menu, "打噜鼠").menu())
             finally:
                 window.close()
 
@@ -104,6 +108,7 @@ class MenuTests(unittest.TestCase):
 
             self.assertEqual(texts, ["结束专注模式", "学习记录", "退出"])
             self.assertNotIn("签订契约", texts)
+            self.assertNotIn("小游戏", texts)
         finally:
             window.close()
 
@@ -154,10 +159,12 @@ class MenuTests(unittest.TestCase):
             menu = window.context_menu()
             focus_menu = submenu_by_text(menu, "专注模式")
             change_menu = submenu_by_text(menu, "更换形象")
+            games_menu = submenu_by_text(menu, "小游戏")
 
             assert_lulu_menu_style(self, menu)
             self.assertEqual(focus_menu.styleSheet(), menu.styleSheet())
             self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
+            self.assertEqual(games_menu.styleSheet(), menu.styleSheet())
         finally:
             window.close()
 
@@ -241,12 +248,16 @@ class MenuTests(unittest.TestCase):
             self.assertIn("专注模式", texts)
             self.assertIn("休息一下", texts)
             self.assertIn("签订契约", texts)
+            self.assertIn("小游戏", texts)
             self.assertIn("暂停移动", texts)
             self.assertIn("保持置顶", texts)
             self.assertIn("退出", texts)
             focus_menu = submenu_by_text(menu, "专注模式")
             self.assertEqual(action_texts(focus_menu), ["开始专注", "学习记录"])
             self.assertIsNone(action_by_text(focus_menu, "学习记录").menu())
+            games_menu = submenu_by_text(menu, "小游戏")
+            self.assertEqual(action_texts(games_menu), ["打噜鼠"])
+            self.assertIsNone(action_by_text(games_menu, "打噜鼠").menu())
         finally:
             tray.hide()
             window.close()
@@ -348,6 +359,7 @@ class MenuTests(unittest.TestCase):
             self.assertNotIn("专注模式", texts)
             self.assertNotIn("休息一下", texts)
             self.assertNotIn("签订契约", texts)
+            self.assertNotIn("小游戏", texts)
             self.assertNotIn("暂停移动", texts)
             self.assertNotIn("保持置顶", texts)
         finally:
@@ -410,10 +422,12 @@ class MenuTests(unittest.TestCase):
             menu = tray.tray.contextMenu()
             focus_menu = submenu_by_text(menu, "专注模式")
             change_menu = submenu_by_text(menu, "更换形象")
+            games_menu = submenu_by_text(menu, "小游戏")
 
             assert_lulu_menu_style(self, menu)
             self.assertEqual(focus_menu.styleSheet(), menu.styleSheet())
             self.assertEqual(change_menu.styleSheet(), menu.styleSheet())
+            self.assertEqual(games_menu.styleSheet(), menu.styleSheet())
         finally:
             tray.hide()
             window.close()
