@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 import tempfile
 import time
 import unittest
@@ -92,24 +93,79 @@ class FocusModeTests(unittest.TestCase):
         finally:
             window.close()
 
-    def test_focus_mode_selects_expected_stage_gifs(self):
+    def test_focus_mode_selects_expected_stage_gifs_with_12_minute_random_interval(self):
         window = PetWindow(PetController(AssetManager(None)), default_settings())
         try:
-            window.trigger_focus_mode()
+            with patch("lulu_pet.pet_window.random.randint", return_value=12):
+                window.trigger_focus_mode()
 
             cases = [
                 (0, "1.gif"),
-                (5 * 60, "2.gif"),
-                (10 * 60, "3.gif"),
-                (15 * 60, "4.gif"),
-                (20 * 60, "5.gif"),
-                (45 * 60, "5.gif"),
+                (12 * 60, "2.gif"),
+                (24 * 60, "3.gif"),
+                (36 * 60, "4.gif"),
+                (48 * 60, "5.gif"),
+                (75 * 60, "5.gif"),
             ]
             for elapsed, expected_name in cases:
                 with self.subTest(elapsed=elapsed):
                     window._focus_started_at = time.monotonic() - elapsed
                     window._on_tick()
                     self.assertEqual(window._focus_character_asset.name, expected_name)
+        finally:
+            window.close()
+
+    def test_focus_mode_selects_expected_stage_gifs_with_25_minute_random_interval(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            with patch("lulu_pet.pet_window.random.randint", return_value=25):
+                window.trigger_focus_mode()
+
+            cases = [
+                (0, "1.gif"),
+                (25 * 60, "2.gif"),
+                (50 * 60, "3.gif"),
+                (75 * 60, "4.gif"),
+                (100 * 60, "5.gif"),
+                (150 * 60, "5.gif"),
+            ]
+            for elapsed, expected_name in cases:
+                with self.subTest(elapsed=elapsed):
+                    window._focus_started_at = time.monotonic() - elapsed
+                    window._on_tick()
+                    self.assertEqual(window._focus_character_asset.name, expected_name)
+        finally:
+            window.close()
+
+    def test_focus_mode_generates_one_random_interval_per_session(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            with patch("lulu_pet.pet_window.random.randint", side_effect=[12, 25]) as randint:
+                window.trigger_focus_mode()
+                self.assertEqual(window._focus_stage_seconds, 12 * 60)
+
+                for elapsed in (0, 12 * 60, 24 * 60):
+                    window._focus_started_at = time.monotonic() - elapsed
+                    window._on_tick()
+
+                self.assertEqual(randint.call_count, 1)
+
+                window.end_focus_mode()
+                window.trigger_focus_mode()
+
+                self.assertEqual(window._focus_stage_seconds, 25 * 60)
+                self.assertEqual(randint.call_count, 2)
+        finally:
+            window.close()
+
+    def test_focus_mode_random_interval_is_between_12_and_25_minutes(self):
+        window = PetWindow(PetController(AssetManager(None)), default_settings())
+        try:
+            window.trigger_focus_mode()
+
+            self.assertGreaterEqual(window._focus_stage_seconds, 12 * 60)
+            self.assertLessEqual(window._focus_stage_seconds, 25 * 60)
+            self.assertEqual(window._focus_stage_seconds % 60, 0)
         finally:
             window.close()
 

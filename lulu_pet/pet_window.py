@@ -42,7 +42,8 @@ DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
 PAJAMA_CHARACTER_GIF = "xhs_lulu_02.gif"
-FOCUS_STAGE_SECONDS = 5 * 60
+FOCUS_MIN_STAGE_MINUTES = 12
+FOCUS_MAX_STAGE_MINUTES = 25
 FOCUS_STICKER_DURATION_MS = 2600
 
 
@@ -81,6 +82,7 @@ class PetWindow(QWidget):
         self._focus_active = False
         self._focus_started_at = 0.0
         self._focus_started_wall_time: datetime | None = None
+        self._focus_stage_seconds = FOCUS_MIN_STAGE_MINUTES * 60
         self._focus_stage_index = -1
         self._focus_character_asset: Path | None = None
         self._sticker_timer = QTimer(self)
@@ -179,6 +181,7 @@ class PetWindow(QWidget):
         self._focus_active = True
         self._focus_started_at = time.monotonic()
         self._focus_started_wall_time = datetime.now()
+        self._focus_stage_seconds = random.randint(FOCUS_MIN_STAGE_MINUTES, FOCUS_MAX_STAGE_MINUTES) * 60
         self._focus_stage_index = -1
         self._resting = False
         self._dragging = False
@@ -667,7 +670,7 @@ class PetWindow(QWidget):
         return max(0, int(time.monotonic() - self._focus_started_at))
 
     def _update_focus_stage(self) -> None:
-        stage_index = min(self._focus_elapsed_seconds() // FOCUS_STAGE_SECONDS, len(self._focus_assets) - 1)
+        stage_index = min(self._focus_elapsed_seconds() // self._focus_stage_seconds, len(self._focus_assets) - 1)
         if stage_index == self._focus_stage_index:
             return
         self._focus_stage_index = stage_index
