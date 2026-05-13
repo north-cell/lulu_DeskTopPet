@@ -65,11 +65,8 @@ python run_lulu_pet.py
 
 - 通过噜噜右键菜单或系统托盘菜单进入专注模式。
 - 进入后噜噜会回到屏幕右下角，停止移动，并暂时不允许拖拽。
-- 每次进入专注模式时，会随机选取一个 12 到 25 分钟之间的整数分钟作为本次动画切换间隔。
-- 噜噜会按本次随机间隔依次切换 `1.gif` 到 `5.gif`；切到 `5.gif` 后会保持该动画，直到结束专注模式。
 - 噜噜头顶上方会出现一个小橘子计时器，从 `00:00` 开始正计时。
 - 双击小橘子计时器，或在右键/托盘菜单选择 `结束专注模式`，即可退出。
-- 退出时噜噜会播放结束动画，并显示“谢谢你陪本噜噜大王学习 + 本次专注时长”的气泡。
 - 专注满 1 分钟后会写入学习记录，可在 `专注模式` 菜单里查看。
 - 专注期间，普通拖拽、双击表情包和小游戏入口不会打断专注状态。
 
@@ -83,15 +80,6 @@ python run_lulu_pet.py
 - `贪吃噜`：全屏贪吃蛇玩法。蛇头是噜噜，食物和身体是小桔子；方向键或 WASD 控制移动，吃到小桔子后增长，撞墙或撞到自己后结算。
 - `2048噜`：经典 4×4 2048 玩法。方向键或 WASD 滑动方块，相同数字合并加分；达到 2048 后可继续挑战更高分。
 - `Flappy Lulu`：像素鸟玩法。点击 `START` 后开始，空格或鼠标左键控制像素噜噜上跳，穿过绿色管道得分，碰撞后结算。
-
-小游戏最高纪录保存在独立文件里，不会写入 `settings.json`：
-
-```text
-config/whack_lulu_records.json
-config/greedy_lulu_records.json
-config/lulu_2048_records.json
-config/flappy_lulu_records.json
-```
 
 ## 功能特性 ✨
 
@@ -136,8 +124,6 @@ pyinstaller lulu-pet.spec
 dist/LuluDesktopPet/
 ```
 
-分发给别人时，请压缩整个 `dist/LuluDesktopPet/` 文件夹，而不是只发送 exe。
-
 ## 素材与配置 🎨
 
 主要素材目录：
@@ -147,80 +133,12 @@ assets/lulu_transparent_gifs/
 assets/lulu_FocusMode/
 ```
 
-`assets/lulu_FocusMode/` 用于专注模式：
-
-- `1.gif` 到 `4.gif`：按每次专注开始时随机生成的切换间隔依次切换。
-- `5.gif`：完成前 4 次切换后持续显示，直到结束专注模式。
-- `6.gif`：结束专注模式时播放一次。
-
 配置文件：
-
-```text
-assets/manifest.json
-config/settings.json
-config/focus_records.json
-config/*_records.json
-```
 
 - `assets/manifest.json` 可配置动作素材和台词。
 - `config/settings.json` 保存窗口大小、置顶、说话间隔、边缘限制、开机自启动、移动速度和契约称呼。
 - `config/focus_records.json` 保存专注模式学习记录。
 - `config/*_records.json` 保存各小游戏最高纪录；这些文件由游戏运行时按需创建。
-
-### 气泡台词与称呼
-
-`assets/manifest.json` 里的每个动作都可以配置 `lines`。台词中可以写 `shouting` 作为称呼占位符：
-
-```json
-{
-  "lines": [
-    "shouting今天也闪闪发光。",
-    "本噜噜大王偷偷看了看shouting，嗯，今天也很可爱。"
-  ]
-}
-```
-
-用户签订契约后，程序不会改写 `assets/manifest.json`，而是在显示气泡时把 `shouting` 替换成用户保存的称呼。默认称呼配置在 `config/settings.json`：
-
-```json
-{
-  "contract_name": "shouting"
-}
-```
-
-建议台词保持可爱、淘气、陪伴感强的噜噜语气；如果一句话里不需要用户称呼，也可以不写 `shouting`。
-
-动作素材支持单文件：
-
-```json
-{
-  "file": "example.gif"
-}
-```
-
-也支持多文件顺序播放：
-
-```json
-{
-  "files": ["a.gif", "b.gif", "c.gif"]
-}
-```
-
-## 开发 🧪
-
-安装依赖：
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-运行测试：
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests
-```
 
 项目结构：
 
@@ -231,34 +149,6 @@ assets/          桌宠素材和动作配置
 config/          本地设置和运行时纪录
 tests/           单元测试
 scripts/         素材处理和辅助脚本
-```
-
-常用入口：
-
-```text
-run_lulu_pet.py       源码运行快捷入口
-lulu_pet/__main__.py  python -m lulu_pet 入口
-lulu-pet.spec         PyInstaller 打包配置
-```
-
-### 新增小游戏
-
-小游戏采用独立窗口模式，便于后续扩展：
-
-1. 在 `lulu_pet/games/` 新增一个游戏窗口类。
-2. 游戏窗口提供 `finished` signal，关闭时发出，用于恢复桌宠状态。
-3. 如需重新开始，提供 `restart_game()`；如需提前结算，提供 `finish_game()`。
-4. 在 `PetWindow.add_games_menu()` 中注册二级菜单动作。
-5. 在 `PetWindow` 中新增 `start_xxx_game()`，并复用 `_start_game_window(...)` 启动。
-6. 为菜单、规则、纪录保存和桌宠状态恢复补充测试。
-
-已有小游戏可作为参考：
-
-```text
-lulu_pet/games/whack_lulu.py
-lulu_pet/games/greedy_lulu.py
-lulu_pet/games/lulu_2048.py
-lulu_pet/games/flappy_lulu.py
 ```
 
 ## 说明 📌
