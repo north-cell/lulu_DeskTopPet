@@ -140,6 +140,21 @@ class AssetManagerTests(unittest.TestCase):
         self.assertTrue(any("贴贴" in line for line in lines))
         self.assertTrue(any("偷偷" in line for line in lines))
 
+    def test_packaged_manifest_references_current_gif_pool(self):
+        manifest_path = resource_path("assets", "manifest.json")
+        manager = AssetManager(manifest_path)
+        gif_dir = resource_path("assets", "lulu_transparent_gifs")
+        manifest_paths = {
+            path
+            for name in manager.action_names
+            for path in manager.get_action(name).file_paths
+        }
+
+        self.assertTrue(manifest_paths)
+        self.assertTrue(all(path.exists() for path in manifest_paths))
+        self.assertTrue(any(path.name.startswith("640") for path in manifest_paths))
+        self.assertTrue(set(gif_dir.glob("640*.gif")).issubset(manifest_paths))
+
 
 if __name__ == "__main__":
     unittest.main()
