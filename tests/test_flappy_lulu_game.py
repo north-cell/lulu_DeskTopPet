@@ -48,12 +48,13 @@ def press_key(window: FlappyLuluWindow, key: Qt.Key) -> None:
     window.keyPressEvent(event)
 
 
-def left_click(window: FlappyLuluWindow) -> None:
+def left_click(window: FlappyLuluWindow, pos=None) -> None:
+    click_pos = pos or window.rect().center()
     event = QMouseEvent(
         QMouseEvent.MouseButtonPress,
-        window.rect().center(),
-        window.rect().center(),
-        window.rect().center(),
+        click_pos,
+        click_pos,
+        click_pos,
         Qt.LeftButton,
         Qt.LeftButton,
         Qt.NoModifier,
@@ -93,6 +94,39 @@ class FlappyLuluGameTests(unittest.TestCase):
             self.assertFalse(window.start_screen_visible)
             self.assertFalse(window.results_visible)
             self.assertTrue(window._game_timer.isActive())
+        finally:
+            window.close()
+
+    def test_start_button_waits_for_first_space_or_mouse_before_running(self):
+        window = FlappyLuluWindow(play_area=QRect(0, 0, 800, 480), seed=1)
+        try:
+            window.restart_game()
+
+            left_click(window, window._start_button_rect().center())
+
+            self.assertFalse(window.start_screen_visible)
+            self.assertTrue(window.awaiting_first_input)
+            self.assertFalse(window.results_visible)
+            self.assertFalse(window._game_timer.isActive())
+
+            press_key(window, Qt.Key_Space)
+
+            self.assertFalse(window.awaiting_first_input)
+            self.assertTrue(window._game_timer.isActive())
+            self.assertEqual(window.bird_velocity, window.flap_velocity)
+        finally:
+            window.close()
+
+        window = FlappyLuluWindow(play_area=QRect(0, 0, 800, 480), seed=1)
+        try:
+            window.restart_game()
+            left_click(window, window._start_button_rect().center())
+
+            left_click(window)
+
+            self.assertFalse(window.awaiting_first_input)
+            self.assertTrue(window._game_timer.isActive())
+            self.assertEqual(window.bird_velocity, window.flap_velocity)
         finally:
             window.close()
 

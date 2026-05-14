@@ -68,6 +68,7 @@ class FlappyLuluWindow(QWidget):
         self.score = 0
         self.high_score = self._load_high_score()
         self.start_screen_visible = True
+        self.awaiting_first_input = False
         self.results_visible = False
         self._closed_signal_emitted = False
 
@@ -100,6 +101,7 @@ class FlappyLuluWindow(QWidget):
         self.bird_velocity = 0
         self.score = 0
         self.start_screen_visible = True
+        self.awaiting_first_input = False
         self.results_visible = False
         self._closed_signal_emitted = False
         self._game_timer.stop()
@@ -116,18 +118,33 @@ class FlappyLuluWindow(QWidget):
         if self.results_visible:
             return
         self.start_screen_visible = False
+        self.awaiting_first_input = False
         self.bird_velocity = 0
         self._game_timer.start(FRAME_INTERVAL_MS)
         self.setFocus()
         self.update()
 
+    def prepare_to_start(self) -> None:
+        if self.results_visible:
+            return
+        self.start_screen_visible = False
+        self.awaiting_first_input = True
+        self.bird_velocity = 0
+        self._game_timer.stop()
+        self.setFocus()
+        self.update()
+
     def flap(self) -> None:
-        if self.start_screen_visible or self.results_visible:
+        if self.results_visible:
+            return
+        if self.awaiting_first_input:
+            self.start_game()
+        if self.start_screen_visible:
             return
         self.bird_velocity = self.flap_velocity
 
     def advance_frame(self) -> None:
-        if self.start_screen_visible or self.results_visible:
+        if self.start_screen_visible or self.awaiting_first_input or self.results_visible:
             return
         self.bird_velocity += self.gravity
         self.bird_y += self.bird_velocity
@@ -145,6 +162,7 @@ class FlappyLuluWindow(QWidget):
             return
         self._save_high_score_if_needed()
         self.start_screen_visible = False
+        self.awaiting_first_input = False
         self.results_visible = True
         self._game_timer.stop()
         self._set_result_buttons_visible(True)
@@ -169,7 +187,7 @@ class FlappyLuluWindow(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent):  # noqa: N802 - Qt override
         if event.key() == Qt.Key_Escape:
-            if self.start_screen_visible:
+            if self.start_screen_visible or self.awaiting_first_input:
                 self.close()
             else:
                 self.finish_game()
@@ -186,7 +204,7 @@ class FlappyLuluWindow(QWidget):
             if self.start_screen_visible:
                 pos = event.position().toPoint()
                 if self._start_button_rect().contains(pos):
-                    self.start_game()
+                    self.prepare_to_start()
                 elif self._quit_button_rect().contains(pos):
                     self.close()
                 event.accept()
@@ -207,6 +225,9 @@ class FlappyLuluWindow(QWidget):
             self._paint_pixel_lulu(painter)
         if not self.start_screen_visible:
             self._paint_hud(painter)
+        if self.awaiting_first_input:
+            painter.setRenderHint(QPainter.Antialiasing)
+            self._paint_ready_prompt(painter)
         if self.start_screen_visible:
             painter.setRenderHint(QPainter.Antialiasing)
             self._paint_start_screen(painter)
@@ -376,6 +397,20 @@ class FlappyLuluWindow(QWidget):
         painter.drawText(panel.adjusted(0, 26, 0, 0), Qt.AlignHCenter | Qt.AlignTop, "Flappy Lulu 结算")
         painter.setFont(QFont("Microsoft YaHei UI", 14))
         painter.drawText(panel.adjusted(88, 92, -88, -90), Qt.AlignLeft | Qt.AlignTop, f"分数：{self.score}\n最高纪录：{self.high_score}")
+
+    def _paint_ready_prompt(self, painter: QPainter) -> None:
+        area = self._current_play_area()
+        prompt = QRect(0, 0, 360, 76)
+        prompt.moveCenter(area.center())
+        prompt.moveTop(self.ground_y - 150)
+        painter.setPen(QPen(QColor("#7D4E2E"), 2))
+        painter.setBrush(QColor(255, 248, 224, 220))
+        painter.drawRoundedRect(prompt, 10, 10)
+        painter.setPen(QColor("#3B271C"))
+        painter.setFont(QFont("Microsoft YaHei UI", 14, QFont.Bold))
+        painter.drawText(prompt.adjusted(18, 12, -18, 0), Qt.AlignHCenter | Qt.AlignTop, "准备好了吗？")
+        painter.setFont(QFont("Microsoft YaHei UI", 11))
+        painter.drawText(prompt.adjusted(18, 42, -18, 0), Qt.AlignHCenter | Qt.AlignTop, "单击鼠标或按空格开始")
 
     def _current_play_area(self) -> QRect:
         if self._play_area:
