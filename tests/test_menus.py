@@ -137,7 +137,19 @@ class MenuTests(unittest.TestCase):
             change_menu = submenu_by_text(menu, "更换形象")
             texts = action_texts(change_menu)
 
-            self.assertEqual(texts, ["游泳噜噜", "睡衣噜噜", "得瑟噜噜"])
+            self.assertEqual(
+                texts,
+                [
+                    "游泳噜噜",
+                    "睡衣噜噜",
+                    "得瑟噜噜",
+                    "小鸭噜噜",
+                    "小象噜噜",
+                    "野人噜噜",
+                    "粉嘟嘟噜",
+                    "霸王龙噜",
+                ],
+            )
 
             swim_action = next(action for action in change_menu.actions() if action.text() == "游泳噜噜")
             swim_action.trigger()
@@ -153,6 +165,19 @@ class MenuTests(unittest.TestCase):
             proud_action.trigger()
 
             self.assertEqual(window._character_assets["body"].name, "lulu_transparent_09.gif")
+
+            custom_characters = {
+                "小鸭噜噜": "640 - 2026-05-14T123937.674.gif",
+                "小象噜噜": "640 (81).gif",
+                "野人噜噜": "640 (21).gif",
+                "粉嘟嘟噜": "640 (94).gif",
+                "霸王龙噜": "640 (98).gif",
+            }
+            for label, filename in custom_characters.items():
+                action = next(action for action in change_menu.actions() if action.text() == label)
+                action.trigger()
+
+                self.assertEqual(window._character_assets["body"].name, filename)
         finally:
             window.close()
 

@@ -44,6 +44,13 @@ DEFAULT_CHARACTER_GIF = "lulu_transparent_09.gif"
 SWIMMING_CHARACTER_GIF = "lulu_transparent_01.gif"
 LIFTED_CHARACTER_GIF = "xhs_lulu_01.gif"
 PAJAMA_CHARACTER_GIF = "xhs_lulu_02.gif"
+EXTRA_CHARACTER_GIFS = {
+    "小鸭噜噜": "640 - 2026-05-14T123937.674.gif",
+    "小象噜噜": "640 (81).gif",
+    "野人噜噜": "640 (21).gif",
+    "粉嘟嘟噜": "640 (94).gif",
+    "霸王龙噜": "640 (98).gif",
+}
 FOCUS_MIN_STAGE_MINUTES = 12
 FOCUS_MAX_STAGE_MINUTES = 25
 FOCUS_STICKER_DURATION_MS = 2600
@@ -103,6 +110,10 @@ class PetWindow(QWidget):
         self._swimming_character_asset = resource_path("assets", "lulu_transparent_gifs", SWIMMING_CHARACTER_GIF)
         self._lifted_character_asset = resource_path("assets", "lulu_transparent_gifs", LIFTED_CHARACTER_GIF)
         self._pajama_character_asset = resource_path("assets", "lulu_transparent_gifs", PAJAMA_CHARACTER_GIF)
+        self._extra_character_assets = {
+            label: resource_path("assets", "lulu_transparent_gifs", filename)
+            for label, filename in EXTRA_CHARACTER_GIFS.items()
+        }
         self._character_assets = {
             "body": self._default_character_asset,
             "lifted": self._lifted_character_asset,
@@ -233,6 +244,9 @@ class PetWindow(QWidget):
     def show_proud_character(self) -> None:
         self._set_body_character(self._default_character_asset)
 
+    def show_extra_character(self, label: str) -> None:
+        self._set_body_character(self._extra_character_assets[label])
+
     def sign_contract(self) -> None:
         text, accepted = ContractDialog.get_contract_name(self.settings.contract_name, self)
         if not accepted:
@@ -301,6 +315,8 @@ class PetWindow(QWidget):
         change_menu.addAction("游泳噜噜", self.show_swimming_character)
         change_menu.addAction("睡衣噜噜", self.show_pajama_character)
         change_menu.addAction("得瑟噜噜", self.show_proud_character)
+        for label in EXTRA_CHARACTER_GIFS:
+            change_menu.addAction(label, lambda checked=False, label=label: self.show_extra_character(label))
         menu.addMenu(change_menu)
         return change_menu
 
