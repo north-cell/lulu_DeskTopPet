@@ -54,6 +54,7 @@ EXTRA_CHARACTER_GIFS = {
 FOCUS_MIN_STAGE_MINUTES = 12
 FOCUS_MAX_STAGE_MINUTES = 25
 FOCUS_STICKER_DURATION_MS = 2600
+LULU_2048_WINDOW_SIZE = (680, 620)
 
 
 class PetWindow(QWidget):
@@ -343,12 +344,12 @@ class PetWindow(QWidget):
         self._start_game_window(GreedyLuluWindow)
 
     def start_lulu_2048_game(self) -> None:
-        self._start_game_window(Lulu2048Window)
+        self._start_game_window(Lulu2048Window, full_screen=False)
 
     def start_flappy_lulu_game(self) -> None:
         self._start_game_window(FlappyLuluWindow)
 
-    def _start_game_window(self, game_window_class) -> None:
+    def _start_game_window(self, game_window_class, *, full_screen: bool = True) -> None:
         if self._focus_active:
             return
         if self._active_game_window:
@@ -365,7 +366,22 @@ class PetWindow(QWidget):
         game = game_window_class()
         game.finished.connect(self._restore_after_game)
         self._active_game_window = game
-        game.showFullScreen()
+        if full_screen:
+            game.showFullScreen()
+        else:
+            self._show_game_windowed(game, *LULU_2048_WINDOW_SIZE)
+
+    def _show_game_windowed(self, game: QWidget, width: int, height: int) -> None:
+        screen = self.screen().availableGeometry() if self.screen() else QRect(0, 0, 1280, 720)
+        margin = 32
+        window_width = min(width, max(360, screen.width() - margin * 2))
+        window_height = min(height, max(420, screen.height() - margin * 2))
+        geometry = QRect(0, 0, window_width, window_height)
+        geometry.moveCenter(screen.center())
+        game.setGeometry(geometry)
+        game.show()
+        game.raise_()
+        game.activateWindow()
 
     def show_focus_records(self) -> None:
         if self._focus_records_dialog:

@@ -259,6 +259,7 @@ class Lulu2048GameTests(unittest.TestCase):
             self.assertTrue(pet._bubble.hidden)
             self.assertTrue(pet._sticker.hidden)
             self.assertIsNotNone(pet._active_game_window)
+            self.assertFalse(pet._active_game_window.isFullScreen())
 
             pet._active_game_window.finish_game()
             pet._active_game_window.close()
