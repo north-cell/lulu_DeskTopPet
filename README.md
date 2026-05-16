@@ -4,6 +4,14 @@
 
 > 适合想要一个轻量、可爱、开箱即用的桌面陪伴小工具。
 
+## 演示视频 🎬
+
+<video src="assets/demo/play.mp4" controls width="720">
+  你的浏览器不支持视频播放，可以直接打开 assets/demo/play.mp4 查看。
+</video>
+
+[查看演示视频](assets/demo/play.mp4)
+
 ## 下载使用 🚀
 
 ### 方式一：下载打包版 📦
