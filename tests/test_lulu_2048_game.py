@@ -244,6 +244,16 @@ class Lulu2048GameTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_lulu_2048_window_does_not_stay_on_top(self):
+        window = Lulu2048Window(play_area=QRect(0, 0, 640, 520), seed=1)
+        try:
+            flags = window.windowFlags()
+
+            self.assertFalse(flags & Qt.WindowStaysOnTopHint)
+            self.assertEqual(window.windowType(), Qt.Window)
+        finally:
+            window.close()
+
     def test_pet_window_restores_visibility_and_motion_after_lulu_2048(self):
         pet = PetWindow(PetController(AssetManager(None)), default_settings())
         pet._bubble = FakeBubble()

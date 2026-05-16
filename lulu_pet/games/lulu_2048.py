@@ -47,7 +47,7 @@ class Lulu2048Window(QWidget):
         self.setWindowTitle("2048噜")
         self.setFocusPolicy(Qt.StrongFocus)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         if self._play_area:
             self.setGeometry(self._play_area)
 
